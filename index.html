@@ -13,9 +13,15 @@
   <!-- ============================= MARCA ============================= -->
   <header class="brandbar">
     <div class="mark">HERI<em>&nbsp;PDF</em></div>
-    <input type="text" id="docTitle" value="documento-sin-titulo" spellcheck="false">
+    <div class="title-edit-wrap" id="titleEditWrap" title="Haz clic para renombrar el documento">
+      <input type="text" id="docTitle" value="documento-sin-titulo" spellcheck="false">
+      <svg class="title-edit-icon" viewBox="0 0 20 20" width="13" height="13" fill="none" aria-hidden="true">
+        <path d="M13.5 2.5l4 4L7 17H3v-4L13.5 2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      </svg>
+    </div>
     <div class="spacer"></div>
     <a class="btn-excel" id="btnCreateExcel" href="https://cybersecureaid.github.io/HeriExel.Pro/" target="_blank" rel="noopener noreferrer" title="Crear una hoja de cálculo Excel">📊 Crear Excel</a>
+    <button class="btn-hire" id="btnHireDev">Hire Developer</button>
     <div class="status"><span class="dot"></span><span id="statusText">Listo</span></div>
     <button class="btn-export" id="btnExport">Exportar PDF</button>
   </header>
@@ -164,6 +170,7 @@
           <div class="tex-swatch tex-noise" data-tex="noise"><span>Ruido</span></div>
           <div class="tex-swatch tex-notebook" data-tex="notebook"><span>Cuaderno</span></div>
           <div class="tex-swatch tex-noche" data-tex="noche"><span>Noche</span></div>
+          <div class="tex-swatch tex-negro" data-tex="negro"><span>Negro sólido</span></div>
           <div class="tex-swatch tex-kraft" data-tex="kraft"><span>Kraft</span></div>
           <div class="tex-swatch tex-holo" data-tex="holo"><span>Holográfico</span></div>
           <div class="tex-swatch tex-goldfoil" data-tex="goldfoil"><span>Lámina de oro</span></div>
@@ -188,6 +195,8 @@
         <button class="el-btn" id="elSignature">✒ Línea de firma</button>
         <button class="el-btn" id="elQuote">" Bloque de cita</button>
         <button class="el-btn" id="elPagebreak">⤓ Salto de página (hoja nueva)</button>
+        <button class="el-btn" id="elFootnote">﹡ Nota al pie</button>
+        <button class="el-btn" id="elCodeBlock">&lt;/&gt; Bloque de código</button>
         <p class="panel-title">Elementos que un PDF normal no tiene</p>
         <button class="el-btn" id="elShapeRect">▭ Rectángulo de color</button>
         <button class="el-btn" id="elShapeCircle">● Círculo de color</button>
@@ -196,6 +205,11 @@
         <button class="el-btn" id="elChecklist">☑ Lista de verificación</button>
         <button class="el-btn" id="elCallout">💬 Recuadro destacado</button>
         <button class="el-btn" id="elTOC">📑 Tabla de contenidos automática</button>
+        <button class="el-btn" id="elSeal">🏵 Sello redondo</button>
+        <button class="el-btn" id="elSticky">🗒 Nota adhesiva</button>
+        <button class="el-btn" id="elWarning">⚠ Recuadro de advertencia</button>
+        <button class="el-btn" id="elProgress">▬ Barra de progreso</button>
+        <button class="el-btn" id="elIconDivider">✦ Separador con icono</button>
       </div>
 
       <!-- Panel: herramientas extra tipo Acrobat -->
@@ -209,6 +223,12 @@
           <button class="tool-card" id="toolStamp"><span class="tc-icon">🔴</span><span class="tc-name">Sellos</span></button>
           <button class="tool-card" id="toolTable"><span class="tc-icon">▦</span><span class="tc-name">Insertar tabla</span></button>
           <button class="tool-card" id="toolColumns"><span class="tc-icon">❘❘</span><span class="tc-name">Columnas</span></button>
+          <button class="tool-card" id="toolDuplicatePage"><span class="tc-icon">⧉</span><span class="tc-name">Duplicar página</span></button>
+          <button class="tool-card" id="toolMoveUp"><span class="tc-icon">▲</span><span class="tc-name">Mover página arriba</span></button>
+          <button class="tool-card" id="toolMoveDown"><span class="tc-icon">▼</span><span class="tc-name">Mover página abajo</span></button>
+          <button class="tool-card" id="toolWordCount"><span class="tc-icon">🔤</span><span class="tc-name">Contar palabras</span></button>
+          <button class="tool-card" id="toolFindReplace"><span class="tc-icon">🔎</span><span class="tc-name">Buscar y reemplazar</span></button>
+          <button class="tool-card" id="toolPrint"><span class="tc-icon">🖨</span><span class="tc-name">Imprimir / vista previa</span></button>
         </div>
       </div>
     </aside>
@@ -233,11 +253,6 @@
   <input type="range" id="zoomRange" min="40" max="150" value="90">
   <span id="zoomValue">90%</span>
 </div>
-
-<!-- Pie de página: contratar desarrollador -->
-<footer class="dev-footer">
-  <button class="btn-hire" id="btnHireDev">Hire Developer</button>
-</footer>
 
 <!-- Modal: contratar desarrollador -->
 <div class="modal-overlay" id="hireDevModal">

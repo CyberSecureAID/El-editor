@@ -53,6 +53,15 @@
     setStatus._t = setTimeout(() => (statusText.textContent = 'Listo'), 2200);
   }
 
+  const titleEditWrap = document.getElementById('titleEditWrap');
+  const docTitleInput = document.getElementById('docTitle');
+  if (titleEditWrap && docTitleInput) {
+    titleEditWrap.addEventListener('click', () => {
+      docTitleInput.focus();
+      docTitleInput.select();
+    });
+  }
+
   /* ----------------------------------------------------------------------
      GESTIÓN DE PÁGINAS
      ---------------------------------------------------------------------- */
@@ -557,6 +566,80 @@
     p.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
+  /* ---- Nota al pie ---- */
+  document.getElementById('elFootnote').addEventListener('click', () =>
+    insertHtmlAtCursor('<p style="font-size:10.5px;color:#777;border-top:1px solid #ddd;padding-top:6px;margin-top:20px;">Nota: escribe aquí una aclaración o referencia.</p>')
+  );
+
+  /* ---- Bloque de código ---- */
+  document.getElementById('elCodeBlock').addEventListener('click', () =>
+    insertHtmlAtCursor(
+      '<pre style="background:#1e2027;color:#e9e6df;font-family:\'JetBrains Mono\',monospace;font-size:12px;' +
+      'line-height:1.5;padding:14px 16px;border-radius:6px;overflow-x:auto;margin:10px 0;white-space:pre-wrap;">' +
+      'código de ejemplo();</pre>'
+    )
+  );
+
+  /* ---- Sello redondo (SVG con texto curvo) ---- */
+  function buildRoundSealSVG(text) {
+    const id = 'sealPath' + Date.now();
+    const upper = (text || 'DOCUMENTO VERIFICADO').toUpperCase();
+    return (
+      '<svg viewBox="0 0 140 140" width="110" height="110" style="display:block;">' +
+      '<defs><path id="' + id + '" d="M 20,70 A 50,50 0 1,1 120,70" fill="none"/></defs>' +
+      '<circle cx="70" cy="70" r="62" fill="none" stroke="#b8272c" stroke-width="3"/>' +
+      '<circle cx="70" cy="70" r="50" fill="none" stroke="#b8272c" stroke-width="1.4"/>' +
+      '<text font-family="JetBrains Mono, monospace" font-size="10.5" fill="#b8272c" letter-spacing="2">' +
+      '<textPath href="#' + id + '" startOffset="50%" text-anchor="middle">' + upper + '</textPath>' +
+      '</text>' +
+      '<text x="70" y="76" text-anchor="middle" font-family="Playfair Display, serif" font-weight="700" font-size="17" fill="#b8272c" transform="rotate(-6 70 70)">★</text>' +
+      '</svg>'
+    );
+  }
+  document.getElementById('elSeal').addEventListener('click', () => {
+    const text = prompt('Texto alrededor del sello:', 'DOCUMENTO VERIFICADO');
+    if (text === null) return;
+    insertHtmlAtCursor('<span class="seal-el" contenteditable="false">' + buildRoundSealSVG(text) + '</span>');
+    setStatus('Sello redondo insertado');
+  });
+
+  /* ---- Nota adhesiva ---- */
+  document.getElementById('elSticky').addEventListener('click', () =>
+    insertHtmlAtCursor(
+      '<div class="sticky-el" contenteditable="true">Escribe aquí tu nota…</div>'
+    )
+  );
+
+  /* ---- Recuadro de advertencia ---- */
+  document.getElementById('elWarning').addEventListener('click', () =>
+    insertHtmlAtCursor(
+      '<div style="background:#fdecea;border-left:4px solid #c0392b;padding:12px 16px;margin:10px 0;border-radius:4px;color:#7a231a;">' +
+      '⚠ <strong>Atención:</strong> escribe aquí una advertencia o condición importante.</div>'
+    )
+  );
+
+  /* ---- Barra de progreso ---- */
+  document.getElementById('elProgress').addEventListener('click', () => {
+    let pct = parseInt(prompt('Porcentaje de avance (0–100):', '75'), 10);
+    if (isNaN(pct)) return;
+    pct = Math.max(0, Math.min(100, pct));
+    insertHtmlAtCursor(
+      '<div contenteditable="false" style="margin:14px 0;">' +
+        '<div style="background:#e8e4da;border-radius:20px;height:16px;overflow:hidden;">' +
+          '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#e3ae6c,#c08a45);"></div>' +
+        '</div>' +
+        '<p style="font-size:11px;color:#777;margin:4px 0 0;">' + pct + '% completado</p>' +
+      '</div>'
+    );
+  });
+
+  /* ---- Separador con icono ---- */
+  document.getElementById('elIconDivider').addEventListener('click', () =>
+    insertHtmlAtCursor(
+      '<p style="text-align:center;color:#c08a45;letter-spacing:.3em;margin:18px 0;">— ✦ —</p>'
+    )
+  );
+
   /* ----------------------------------------------------------------------
      PANEL "HERRAMIENTAS" — acciones a nivel de página/documento
      ---------------------------------------------------------------------- */
@@ -629,6 +712,71 @@
   });
   document.getElementById('toolTable').addEventListener('click', () => document.getElementById('btnInsertTable').click());
   document.getElementById('toolColumns').addEventListener('click', () => document.getElementById('btnToggleColumns').click());
+
+  /* ---- Duplicar página actual ---- */
+  document.getElementById('toolDuplicatePage').addEventListener('click', () => {
+    if (!currentPage) return;
+    const copy = createPage(currentPage.innerHTML);
+    // createPage lo agrega al final de la lista; lo reubicamos justo después del original
+    pagesEl.insertBefore(copy, currentPage.nextSibling);
+    refreshPageLabels();
+    focusPage(copy);
+    copy.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus('Página duplicada');
+  });
+
+  /* ---- Mover página arriba / abajo ---- */
+  document.getElementById('toolMoveUp').addEventListener('click', () => {
+    if (!currentPage) return;
+    const prev = currentPage.previousElementSibling;
+    if (!prev) { setStatus('Ya es la primera página'); return; }
+    pagesEl.insertBefore(currentPage, prev);
+    refreshPageLabels();
+    currentPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus('Página movida hacia arriba');
+  });
+  document.getElementById('toolMoveDown').addEventListener('click', () => {
+    if (!currentPage) return;
+    const next = currentPage.nextElementSibling;
+    if (!next) { setStatus('Ya es la última página'); return; }
+    pagesEl.insertBefore(next, currentPage);
+    refreshPageLabels();
+    currentPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus('Página movida hacia abajo');
+  });
+
+  /* ---- Contar palabras ---- */
+  document.getElementById('toolWordCount').addEventListener('click', () => {
+    const pages = Array.from(pagesEl.querySelectorAll('.page'));
+    const pageWords = currentPage ? (currentPage.textContent.trim().match(/\S+/g) || []).length : 0;
+    const totalWords = pages.reduce((sum, p) => sum + (p.textContent.trim().match(/\S+/g) || []).length, 0);
+    alert('Palabras en esta página: ' + pageWords + '\nPalabras en todo el documento: ' + totalWords);
+  });
+
+  /* ---- Buscar y reemplazar (solo texto, respeta el formato existente) ---- */
+  document.getElementById('toolFindReplace').addEventListener('click', () => {
+    if (!currentPage) return;
+    const find = prompt('Buscar en la página actual:', '');
+    if (!find) return;
+    const replace = prompt('Reemplazar con:', '');
+    if (replace === null) return;
+    const walker = document.createTreeWalker(currentPage, NodeFilter.SHOW_TEXT, null);
+    let count = 0;
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      if (node.nodeValue.indexOf(find) !== -1) {
+        const re = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        const matches = node.nodeValue.match(re);
+        if (matches) count += matches.length;
+        node.nodeValue = node.nodeValue.replace(re, replace);
+      }
+    });
+    setStatus(count ? count + ' coincidencia(s) reemplazada(s)' : 'No se encontraron coincidencias');
+  });
+
+  /* ---- Imprimir / vista previa ---- */
+  document.getElementById('toolPrint').addEventListener('click', () => window.print());
 
   /* ----------------------------------------------------------------------
      PESTAÑAS DEL SIDEBAR
@@ -811,7 +959,7 @@
   const img2pdfList    = document.getElementById('img2pdfList');
   const img2pdfCount   = document.getElementById('img2pdfCount');
   const img2pdfGenBtn  = document.getElementById('img2pdfGenerate');
-  let img2pdfItems = []; // { id, dataUrl, fit: 'cover'|'contain', posX, posY }
+  let img2pdfItems = []; // { id, dataUrl, fit, posX, posY, brightness, contrast }
   let img2pdfCounter = 0;
 
   function openImg2pdfModal() {
@@ -839,6 +987,8 @@
           fit: 'cover',
           posX: 50,
           posY: 50,
+          brightness: 100, // % — sube el blanco
+          contrast: 100,   // % — sube la profundidad del negro
         });
         renderImg2pdfList();
       };
@@ -847,13 +997,17 @@
     img2pdfInput.value = '';
   });
 
+  function itemFilterCss(item) {
+    return 'brightness(' + item.brightness + '%) contrast(' + item.contrast + '%)';
+  }
+
   function renderImg2pdfList() {
     img2pdfList.innerHTML = '';
     img2pdfItems.forEach((item, idx) => {
       const row = document.createElement('div');
       row.className = 'img2pdf-item';
       row.innerHTML =
-        '<div class="i-thumb" style="background-image:url(' + item.dataUrl + ')"></div>' +
+        '<div class="i-thumb" style="background-image:url(' + item.dataUrl + ');filter:' + itemFilterCss(item) + ';"></div>' +
         '<div class="i-controls">' +
           '<label>Ajuste en la hoja</label>' +
           '<select class="i-fit">' +
@@ -864,12 +1018,20 @@
             ? '<label>Recorte horizontal</label><input type="range" class="i-posx" min="0" max="100" value="' + item.posX + '">' +
               '<label>Recorte vertical</label><input type="range" class="i-posy" min="0" max="100" value="' + item.posY + '">'
             : '') +
+          '<hr class="i-adjust-divider">' +
+          '<label>Brillo (blancos) <span class="i-brightness-val">' + item.brightness + '%</span></label>' +
+          '<input type="range" class="i-brightness" min="60" max="180" value="' + item.brightness + '">' +
+          '<label>Contraste (negros) <span class="i-contrast-val">' + item.contrast + '%</span></label>' +
+          '<input type="range" class="i-contrast" min="60" max="200" value="' + item.contrast + '">' +
         '</div>' +
         '<div class="i-actions">' +
           '<button class="i-up" title="Subir">▲</button>' +
           '<button class="i-down" title="Bajar">▼</button>' +
+          '<button class="i-reset" title="Restablecer brillo/contraste">↺</button>' +
           '<button class="i-remove" title="Quitar">✕</button>' +
         '</div>';
+
+      const thumb = row.querySelector('.i-thumb');
 
       row.querySelector('.i-fit').addEventListener('change', (e) => {
         item.fit = e.target.value;
@@ -879,6 +1041,22 @@
       const posyEl = row.querySelector('.i-posy');
       if (posxEl) posxEl.addEventListener('input', (e) => (item.posX = +e.target.value));
       if (posyEl) posyEl.addEventListener('input', (e) => (item.posY = +e.target.value));
+
+      row.querySelector('.i-brightness').addEventListener('input', (e) => {
+        item.brightness = +e.target.value;
+        row.querySelector('.i-brightness-val').textContent = item.brightness + '%';
+        thumb.style.filter = itemFilterCss(item);
+      });
+      row.querySelector('.i-contrast').addEventListener('input', (e) => {
+        item.contrast = +e.target.value;
+        row.querySelector('.i-contrast-val').textContent = item.contrast + '%';
+        thumb.style.filter = itemFilterCss(item);
+      });
+      row.querySelector('.i-reset').addEventListener('click', () => {
+        item.brightness = 100;
+        item.contrast = 100;
+        renderImg2pdfList();
+      });
 
       row.querySelector('.i-up').addEventListener('click', () => {
         if (idx === 0) return;
@@ -902,24 +1080,62 @@
   }
   renderImg2pdfList();
 
-  img2pdfGenBtn.addEventListener('click', () => {
-    if (!img2pdfItems.length) return;
-    img2pdfItems.forEach((item) => {
-      const bgStyle = item.fit === 'cover'
-        ? 'background-size:cover;background-position:' + item.posX + '% ' + item.posY + '%;'
-        : 'background-size:contain;background-position:center;background-color:#fff;';
-      const page = createPage(
-        '<div class="img-full-bg" contenteditable="false" style="background-image:url(' + item.dataUrl + ');' + bgStyle + '"></div>'
-      );
-      page.classList.add('page-image-full');
+  // Aplica brillo/contraste "horneándolos" en los píxeles de la imagen final,
+  // para que el ajuste se conserve tal cual al exportar el PDF.
+  function bakeImageAdjustments(dataUrl, brightness, contrast) {
+    return new Promise((resolve) => {
+      if (brightness === 100 && contrast === 100) {
+        resolve(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.filter = 'brightness(' + brightness + '%) contrast(' + contrast + '%)';
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.94));
+        } catch (err) {
+          resolve(dataUrl); // si el canvas falla (p. ej. CORS), usa la original
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
     });
-    const lastPage = pagesEl.lastElementChild;
-    focusPage(lastPage);
-    lastPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setStatus(img2pdfItems.length + ' página(s) generadas desde imágenes');
-    img2pdfItems = [];
-    renderImg2pdfList();
-    closeImg2pdfModal();
+  }
+
+  img2pdfGenBtn.addEventListener('click', async () => {
+    if (!img2pdfItems.length) return;
+    img2pdfGenBtn.disabled = true;
+    toggleLoading(true, 'Procesando imágenes…');
+    try {
+      const processed = await Promise.all(
+        img2pdfItems.map((item) => bakeImageAdjustments(item.dataUrl, item.brightness, item.contrast))
+      );
+      img2pdfItems.forEach((item, idx) => {
+        const finalUrl = processed[idx];
+        const bgStyle = item.fit === 'cover'
+          ? 'background-size:cover;background-position:' + item.posX + '% ' + item.posY + '%;'
+          : 'background-size:contain;background-position:center;background-color:#fff;';
+        const page = createPage(
+          '<div class="img-full-bg" contenteditable="false" style="background-image:url(' + finalUrl + ');' + bgStyle + '"></div>'
+        );
+        page.classList.add('page-image-full');
+      });
+      const lastPage = pagesEl.lastElementChild;
+      focusPage(lastPage);
+      lastPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus(img2pdfItems.length + ' página(s) generadas desde imágenes');
+      img2pdfItems = [];
+      renderImg2pdfList();
+      closeImg2pdfModal();
+    } finally {
+      toggleLoading(false);
+      img2pdfGenBtn.disabled = img2pdfItems.length === 0;
+    }
   });
 
   /* ----------------------------------------------------------------------
