@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Editor de Documentos — Nivel Dios</title>
+<title>HERI PDF — Editor de Documentos, Nivel Dios</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 
   <!-- ============================= MARCA ============================= -->
   <header class="brandbar">
-    <div class="mark">Folio<em>&nbsp;Studio</em></div>
+    <div class="mark">HERI<em>&nbsp;PDF</em></div>
     <input type="text" id="docTitle" value="documento-sin-titulo" spellcheck="false">
     <div class="spacer"></div>
     <div class="status"><span class="dot"></span><span id="statusText">Listo</span></div>
@@ -37,34 +37,30 @@
     <!-- Fuente -->
     <div class="toolbar-group">
       <select class="tsel" id="fontFamily" title="Tipografía">
-        <option value="'Lora', serif" selected>Lora</option>
-        <option value="'Playfair Display', serif">Playfair Display</option>
-        <option value="'Merriweather', serif">Merriweather</option>
-        <option value="'Cinzel', serif">Cinzel</option>
-        <option value="'Abril Fatface', serif">Abril Fatface</option>
-        <option value="'Inter', sans-serif">Inter</option>
-        <option value="'Montserrat', sans-serif">Montserrat</option>
-        <option value="'Poppins', sans-serif">Poppins</option>
-        <option value="'Raleway', sans-serif">Raleway</option>
-        <option value="'Open Sans', sans-serif">Open Sans</option>
-        <option value="'Roboto', sans-serif">Roboto</option>
-        <option value="'Oswald', sans-serif">Oswald</option>
-        <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
-        <option value="'Comfortaa', sans-serif">Comfortaa</option>
-        <option value="'Pacifico', cursive">Pacifico</option>
-        <option value="'Dancing Script', cursive">Dancing Script</option>
-        <option value="'Great Vibes', cursive">Great Vibes</option>
-        <option value="'Caveat', cursive">Caveat</option>
-        <option value="'Courier Prime', monospace">Courier Prime</option>
+        <!-- Se rellena dinámicamente desde fonts.js (HERI_FONTS) -->
       </select>
       <select class="tsel" id="fontSize" title="Tamaño de fuente" style="max-width:74px;">
-        <option value="9">9pt</option><option value="10">10pt</option>
+        <option value="8">8pt</option><option value="9">9pt</option><option value="10">10pt</option>
         <option value="11">11pt</option><option value="12" selected>12pt</option>
         <option value="14">14pt</option><option value="16">16pt</option>
         <option value="18">18pt</option><option value="20">20pt</option>
         <option value="24">24pt</option><option value="28">28pt</option>
-        <option value="32">32pt</option><option value="40">40pt</option>
-        <option value="54">54pt</option><option value="72">72pt</option>
+        <option value="32">32pt</option><option value="36">36pt</option>
+        <option value="40">40pt</option><option value="48">48pt</option>
+        <option value="54">54pt</option><option value="60">60pt</option>
+        <option value="72">72pt</option><option value="96">96pt</option>
+      </select>
+      <select class="tsel" id="lineHeight" title="Interlineado" style="max-width:88px;">
+        <option value="1">1.0</option><option value="1.15">1.15</option>
+        <option value="1.4">1.4</option><option value="1.65" selected>1.65</option>
+        <option value="1.9">1.9</option><option value="2.2">2.2</option>
+      </select>
+      <select class="tsel" id="letterSpacing" title="Espaciado entre letras" style="max-width:96px;">
+        <option value="normal" selected>Normal</option>
+        <option value=".02em">Amplio +</option>
+        <option value=".06em">Amplio ++</option>
+        <option value=".12em">Amplio +++</option>
+        <option value="-.02em">Cerrado</option>
       </select>
     </div>
 
@@ -74,6 +70,8 @@
       <button class="tbtn" data-cmd="italic" title="Cursiva"><i>K</i></button>
       <button class="tbtn" data-cmd="underline" title="Subrayado"><u>S</u></button>
       <button class="tbtn" data-cmd="strikeThrough" title="Tachado"><s>T</s></button>
+      <button class="tbtn" data-cmd="superscript" title="Superíndice">x²</button>
+      <button class="tbtn" data-cmd="subscript" title="Subíndice">x₂</button>
       <div class="tsep"></div>
       <input type="color" class="tcolor" id="textColor" value="#1a1a1a" title="Color de texto">
       <input type="color" class="tcolor" id="highlightColor" value="#fff59d" title="Color de resaltado">
@@ -99,23 +97,21 @@
     <div class="toolbar-group">
       <button class="tbtn" id="btnInsertImage" title="Insertar imagen">🖼</button>
       <input type="file" id="imageInput" accept="image/*" multiple hidden>
+      <button class="tbtn" id="btnInsertTable" title="Insertar tabla">▦</button>
+      <button class="tbtn" id="btnToggleColumns" title="Alternar 2 columnas">❘❘</button>
       <div class="tsep"></div>
       <button class="tbtn" data-cmd="undo" title="Deshacer (Ctrl+Z)">↺</button>
       <button class="tbtn" data-cmd="redo" title="Rehacer (Ctrl+Y)">↻</button>
       <button class="tbtn" data-cmd="removeFormat" title="Limpiar formato">✕</button>
     </div>
 
-    <!-- Efectos tipográficos -->
-    <div class="toolbar-group effect-row">
-      <span class="tlabel">Efecto</span>
-      <button class="fxbtn" data-fx="none">Normal</button>
-      <button class="fxbtn fx-tornasol" data-fx="tornasol">Tornasol</button>
-      <button class="fxbtn fx-dorado" data-fx="dorado">Dorado</button>
-      <button class="fxbtn fx-plata" data-fx="plata">Plata</button>
-      <button class="fxbtn fx-fuego" data-fx="fuego">Fuego</button>
-      <button class="fxbtn fx-neon" style="background:#0c1024;" data-fx="neon">Neón</button>
-      <button class="fxbtn fx-arcoiris" data-fx="arcoiris">Arcoíris</button>
-      <button class="fxbtn fx-3d" data-fx="3d">3D</button>
+    <!-- Efectos tipográficos: botón desplegable con panel emergente -->
+    <div class="toolbar-group" style="position:relative;">
+      <button class="fx-trigger" id="fxTrigger">✨ Efectos <span class="fx-caret">▾</span></button>
+      <div class="fx-popover" id="fxPopover">
+        <p class="panel-title">Efectos de texto — selecciona texto y elige uno</p>
+        <div class="fx-grid" id="fxGrid"><!-- generado por app.js a partir de EFFECTS --></div>
+      </div>
     </div>
 
   </div>
@@ -129,6 +125,8 @@
         <button class="active" data-tab="templates">Plantillas</button>
         <button data-tab="textures">Texturas</button>
         <button data-tab="elements">Elementos</button>
+        <button data-tab="fonts">Fuentes</button>
+        <button data-tab="tools">Herramientas</button>
       </div>
 
       <div class="sidebar-panel active" id="panel-templates">
@@ -139,6 +137,12 @@
         <button class="tpl-card" data-tpl="factura"><div class="t-name">Factura</div><div class="t-desc">Tabla de conceptos y totales</div></button>
         <button class="tpl-card" data-tpl="poster"><div class="t-name">Afiche</div><div class="t-desc">Título grande con efecto tornasol</div></button>
         <button class="tpl-card" data-tpl="certificado"><div class="t-name">Certificado</div><div class="t-desc">Diseño elegante con acabado dorado</div></button>
+        <button class="tpl-card" data-tpl="tarjeta"><div class="t-name">Tarjeta de presentación</div><div class="t-desc">Nombre, cargo y datos de contacto</div></button>
+        <button class="tpl-card" data-tpl="boletin"><div class="t-name">Boletín / Newsletter</div><div class="t-desc">Encabezado, dos columnas y llamada a la acción</div></button>
+        <button class="tpl-card" data-tpl="informe"><div class="t-name">Informe ejecutivo</div><div class="t-desc">Portada, resumen y secciones numeradas</div></button>
+        <button class="tpl-card" data-tpl="propuesta"><div class="t-name">Propuesta comercial</div><div class="t-desc">Alcance, entregables y tabla de inversión</div></button>
+        <button class="tpl-card" data-tpl="menu"><div class="t-name">Menú de restaurante</div><div class="t-desc">Categorías, platillos y precios</div></button>
+        <button class="tpl-card" data-tpl="agenda"><div class="t-name">Agenda de reunión</div><div class="t-desc">Objetivos, temas y responsables</div></button>
       </div>
 
       <div class="sidebar-panel" id="panel-textures">
@@ -159,6 +163,16 @@
           <div class="tex-swatch tex-holo" data-tex="holo"><span>Holográfico</span></div>
           <div class="tex-swatch tex-goldfoil" data-tex="goldfoil"><span>Lámina de oro</span></div>
           <div class="tex-swatch tex-darkelegant" data-tex="darkelegant"><span>Elegante oscuro</span></div>
+          <div class="tex-swatch tex-madera" data-tex="madera"><span>Madera</span></div>
+          <div class="tex-swatch tex-pizarra" data-tex="pizarra"><span>Pizarra</span></div>
+          <div class="tex-swatch tex-acuarela" data-tex="acuarela"><span>Acuarela</span></div>
+          <div class="tex-swatch tex-arroz" data-tex="arroz"><span>Papel de arroz</span></div>
+          <div class="tex-swatch tex-cuero" data-tex="cuero"><span>Cuero</span></div>
+          <div class="tex-swatch tex-seda" data-tex="seda"><span>Seda</span></div>
+          <div class="tex-swatch tex-ondas" data-tex="ondas"><span>Ondas</span></div>
+          <div class="tex-swatch tex-hexagonos" data-tex="hexagonos"><span>Hexágonos</span></div>
+          <div class="tex-swatch tex-estrellas" data-tex="estrellas"><span>Estrellas</span></div>
+          <div class="tex-swatch tex-arena" data-tex="arena"><span>Arena</span></div>
         </div>
       </div>
 
@@ -169,6 +183,37 @@
         <button class="el-btn" id="elSignature">✒ Línea de firma</button>
         <button class="el-btn" id="elQuote">" Bloque de cita</button>
         <button class="el-btn" id="elPagebreak">⤓ Salto de página (hoja nueva)</button>
+        <p class="panel-title">Elementos que un PDF normal no tiene</p>
+        <button class="el-btn" id="elShapeRect">▭ Rectángulo de color</button>
+        <button class="el-btn" id="elShapeCircle">● Círculo de color</button>
+        <button class="el-btn" id="elShapeLine">— Línea gruesa decorativa</button>
+        <button class="el-btn" id="elStamp">🔴 Sello "APROBADO"</button>
+        <button class="el-btn" id="elQR">▦ Código QR</button>
+        <button class="el-btn" id="elChecklist">☑ Lista de verificación</button>
+        <button class="el-btn" id="elCallout">💬 Recuadro destacado</button>
+        <button class="el-btn" id="elTOC">📑 Tabla de contenidos automática</button>
+      </div>
+
+      <!-- Panel: galería de fuentes (generado dinámicamente desde fonts.js) -->
+      <div class="sidebar-panel" id="panel-fonts">
+        <p class="panel-title">Fuentes disponibles</p>
+        <input type="text" class="font-search" id="fontSearch" placeholder="Buscar tipografía…">
+        <div id="fontGallery"><!-- generado por app.js a partir de HERI_FONTS --></div>
+      </div>
+
+      <!-- Panel: herramientas extra tipo Acrobat -->
+      <div class="sidebar-panel" id="panel-tools">
+        <p class="panel-title">Herramientas de documento</p>
+        <div class="tools-grid">
+          <button class="tool-card" id="toolWatermark"><span class="tc-icon">💧</span><span class="tc-name">Marca de agua</span></button>
+          <button class="tool-card" id="toolPageNumbers"><span class="tc-icon">🔢</span><span class="tc-name">Numeración de páginas</span></button>
+          <button class="tool-card" id="toolHeaderFooter"><span class="tc-icon">📰</span><span class="tc-name">Encabezado / pie</span></button>
+          <button class="tool-card" id="toolTOC"><span class="tc-icon">📑</span><span class="tc-name">Índice / TOC</span></button>
+          <button class="tool-card" id="toolQR"><span class="tc-icon">▦</span><span class="tc-name">Generar QR</span></button>
+          <button class="tool-card" id="toolStamp"><span class="tc-icon">🔴</span><span class="tc-name">Sellos</span></button>
+          <button class="tool-card" id="toolTable"><span class="tc-icon">▦</span><span class="tc-name">Insertar tabla</span></button>
+          <button class="tool-card" id="toolColumns"><span class="tc-icon">❘❘</span><span class="tc-name">Columnas</span></button>
+        </div>
       </div>
     </aside>
 
@@ -196,6 +241,8 @@
 <!-- Librerías para exportación PDF de alta calidad (auto-contenidas vía CDN) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="fonts.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

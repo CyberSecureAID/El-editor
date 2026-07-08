@@ -1,6 +1,8 @@
 /* =========================================================================
-   EDITOR DE DOCUMENTOS — lógica de la aplicación
+   HERI PDF — lógica de la aplicación
    100% JavaScript vanilla. Sin frameworks, sin build step.
+   El catálogo de tipografías vive en fonts.js (window.HERI_FONTS) y se
+   consume aquí para poblar el <select> del toolbar y la galería del sidebar.
    ========================================================================= */
 (() => {
   'use strict';
@@ -239,6 +241,32 @@
     savedRange = newRange.cloneRange();
   }
 
+  /* ---- Población del <select> de tipografías a partir de fonts.js ---- */
+  const FONTS = window.HERI_FONTS || [];
+  const FONT_CATEGORIES = window.HERI_FONT_CATEGORIES || {};
+  const fontFamilySel = document.getElementById('fontFamily');
+
+  function populateFontSelect() {
+    const groups = {};
+    FONTS.forEach((f) => {
+      (groups[f.category] = groups[f.category] || []).push(f);
+    });
+    fontFamilySel.innerHTML = '';
+    Object.keys(groups).forEach((cat) => {
+      const og = document.createElement('optgroup');
+      og.label = FONT_CATEGORIES[cat] || cat;
+      groups[cat].forEach((f) => {
+        const opt = document.createElement('option');
+        opt.value = f.css;
+        opt.textContent = f.name;
+        if (f.name === 'Lora') opt.selected = true;
+        og.appendChild(opt);
+      });
+      fontFamilySel.appendChild(og);
+    });
+  }
+  populateFontSelect();
+
   document.getElementById('fontFamily').addEventListener('change', (e) => {
     wrapSelectionWithStyle({ fontFamily: e.target.value });
     setStatus('Tipografía aplicada');
@@ -248,6 +276,38 @@
     wrapSelectionWithStyle({ fontSize: e.target.value + 'pt' });
     setStatus('Tamaño aplicado');
   });
+
+  document.getElementById('lineHeight').addEventListener('change', (e) => {
+    wrapSelectionWithStyle({ lineHeight: e.target.value });
+    setStatus('Interlineado aplicado');
+  });
+
+  document.getElementById('letterSpacing').addEventListener('change', (e) => {
+    wrapSelectionWithStyle({ letterSpacing: e.target.value });
+    setStatus('Espaciado aplicado');
+  });
+
+  /* ---- Galería de fuentes en el sidebar (panel "Fuentes") ---- */
+  const fontGallery = document.getElementById('fontGallery');
+  function renderFontGallery(filter) {
+    const q = (filter || '').toLowerCase().trim();
+    fontGallery.innerHTML = '';
+    FONTS.filter((f) => !q || f.name.toLowerCase().includes(q)).forEach((f) => {
+      const card = document.createElement('button');
+      card.className = 'font-card';
+      card.innerHTML =
+        '<div class="f-preview" style="font-family:' + f.css + ';">Aa Bb — HERI PDF</div>' +
+        '<div class="f-name">' + f.name + '</div>';
+      card.addEventListener('click', () => {
+        wrapSelectionWithStyle({ fontFamily: f.css });
+        fontFamilySel.value = f.css;
+        setStatus('Tipografía "' + f.name + '" aplicada');
+      });
+      fontGallery.appendChild(card);
+    });
+  }
+  renderFontGallery('');
+  document.getElementById('fontSearch').addEventListener('input', (e) => renderFontGallery(e.target.value));
 
   document.getElementById('textColor').addEventListener('change', (e) => {
     wrapSelectionWithStyle({ color: e.target.value });
@@ -264,8 +324,54 @@
   });
 
   /* ----------------------------------------------------------------------
-     EFECTOS TIPOGRÁFICOS (tornasol, dorado, plata, fuego, neón, 3D…)
+     EFECTOS TIPOGRÁFICOS — catálogo ampliado (32 efectos), panel emergente
      ---------------------------------------------------------------------- */
+  const EFFECTS = [
+    { id: 'none', label: 'Normal' },
+    { id: 'tornasol', label: 'Tornasol' },
+    { id: 'dorado', label: 'Dorado' },
+    { id: 'plata', label: 'Plata' },
+    { id: 'fuego', label: 'Fuego' },
+    { id: 'neon', label: 'Neón' },
+    { id: 'arcoiris', label: 'Arcoíris' },
+    { id: '3d', label: '3D' },
+    { id: 'cromo', label: 'Cromo' },
+    { id: 'hielo', label: 'Hielo' },
+    { id: 'sangre', label: 'Sangre' },
+    { id: 'esmeralda', label: 'Esmeralda' },
+    { id: 'veneno', label: 'Veneno' },
+    { id: 'laser', label: 'Láser' },
+    { id: 'glitch', label: 'Glitch' },
+    { id: 'madera', label: 'Madera' },
+    { id: 'cobre', label: 'Cobre' },
+    { id: 'oceano', label: 'Océano' },
+    { id: 'atardecer', label: 'Atardecer' },
+    { id: 'medianoche', label: 'Medianoche' },
+    { id: 'pastel', label: 'Pastel' },
+    { id: 'vintage', label: 'Vintage' },
+    { id: 'purpura', label: 'Púrpura real' },
+    { id: 'bronce', label: 'Bronce' },
+    { id: 'titanio', label: 'Titanio' },
+    { id: 'sombralarga', label: 'Sombra larga' },
+    { id: 'contorno', label: 'Contorno' },
+    { id: 'relieve', label: 'Relieve' },
+    { id: 'marmol', label: 'Mármol' },
+    { id: 'glowsuave', label: 'Glow suave' },
+    { id: 'menta', label: 'Menta' },
+    { id: 'rubi', label: 'Rubí' },
+    { id: 'zafiro', label: 'Zafiro' },
+  ];
+
+  const fxGrid = document.getElementById('fxGrid');
+  EFFECTS.forEach((fx) => {
+    const btn = document.createElement('button');
+    btn.className = 'fxbtn' + (fx.id !== 'none' ? ' fx-' + fx.id : '');
+    if (fx.id === 'neon') btn.style.background = '#0c1024';
+    btn.dataset.fx = fx.id;
+    btn.textContent = fx.label;
+    fxGrid.appendChild(btn);
+  });
+
   function applyEffect(name) {
     restoreSelection();
     const sel = window.getSelection();
@@ -288,8 +394,35 @@
     setStatus('Efecto "' + name + '" aplicado');
   }
 
-  document.querySelectorAll('.fxbtn').forEach((btn) => {
-    btn.addEventListener('click', () => applyEffect(btn.dataset.fx));
+  fxGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fxbtn');
+    if (!btn) return;
+    applyEffect(btn.dataset.fx);
+  });
+
+  /* ---- Panel desplegable de efectos ---- */
+  const fxTrigger = document.getElementById('fxTrigger');
+  const fxPopover = document.getElementById('fxPopover');
+  function closeAllPopovers(except) {
+    document.querySelectorAll('.fx-popover.show, .tool-popover.show').forEach((p) => {
+      if (p !== except) p.classList.remove('show');
+    });
+    document.querySelectorAll('.fx-trigger.open').forEach((b) => {
+      if (b !== except) b.classList.remove('open');
+    });
+  }
+  fxTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !fxPopover.classList.contains('show');
+    closeAllPopovers();
+    fxPopover.classList.toggle('show', willOpen);
+    fxTrigger.classList.toggle('open', willOpen);
+  });
+  document.addEventListener('click', (e) => {
+    if (!fxPopover.contains(e.target) && e.target !== fxTrigger) {
+      fxPopover.classList.remove('show');
+      fxTrigger.classList.remove('open');
+    }
   });
 
   /* ----------------------------------------------------------------------
@@ -366,11 +499,165 @@
   document.getElementById('elQuote').addEventListener('click', () =>
     insertHtmlAtCursor('<blockquote>Escribe aquí una cita destacada…</blockquote>')
   );
+  /* ---- Elementos que un PDF normal no tiene ---- */
+  document.getElementById('elShapeRect').addEventListener('click', () =>
+    insertHtmlAtCursor('<span class="shape-el shape-rect" contenteditable="false"></span>')
+  );
+  document.getElementById('elShapeCircle').addEventListener('click', () =>
+    insertHtmlAtCursor('<span class="shape-el shape-circle" contenteditable="false"></span>')
+  );
+  document.getElementById('elShapeLine').addEventListener('click', () =>
+    insertHtmlAtCursor('<span class="shape-el shape-line" contenteditable="false"></span>')
+  );
+  function insertStamp(text) {
+    insertHtmlAtCursor('<span class="stamp-el" contenteditable="false">' + (text || 'APROBADO') + '</span>');
+  }
+  document.getElementById('elStamp').addEventListener('click', () => insertStamp('APROBADO'));
+  function insertQR(text) {
+    const data = text || 'https://';
+    const box = document.createElement('div');
+    try {
+      /* eslint-disable no-undef */
+      new QRCode(box, { text: data, width: 110, height: 110 });
+      insertHtmlAtCursor('<span class="qr-wrap" contenteditable="false">' + box.innerHTML + '</span>');
+      setStatus('Código QR insertado');
+    } catch (err) {
+      setStatus('No se pudo generar el QR (sin conexión)');
+    }
+  }
+  document.getElementById('elQR').addEventListener('click', () => {
+    const text = prompt('Texto o URL para el código QR:', 'https://');
+    if (text) insertQR(text);
+  });
+  document.getElementById('elChecklist').addEventListener('click', () =>
+    insertHtmlAtCursor('<p>☐ Elemento uno</p><p>☐ Elemento dos</p><p>☐ Elemento tres</p>')
+  );
+  document.getElementById('elCallout').addEventListener('click', () =>
+    insertHtmlAtCursor('<div style="background:#f4ece0;border-left:4px solid #c08a45;padding:12px 16px;margin:10px 0;border-radius:4px;">Texto destacado o nota importante.</div>')
+  );
+  function buildTOC() {
+    const items = [];
+    Array.from(pagesEl.querySelectorAll('.page')).forEach((page, pIdx) => {
+      page.querySelectorAll('.tpl-section, .tpl-title').forEach((el) => {
+        items.push({ text: el.textContent.trim(), page: pIdx + 1 });
+      });
+    });
+    if (!items.length) return '<p class="tpl-title">Tabla de contenidos</p><p>No se encontraron secciones (usa títulos de plantilla).</p>';
+    const rows = items.map((it) =>
+      '<p style="display:flex;justify-content:space-between;border-bottom:1px dotted #ccc;padding:4px 0;"><span>' +
+      it.text + '</span><span>Pág. ' + it.page + '</span></p>'
+    ).join('');
+    return '<p class="tpl-title">Tabla de contenidos</p>' + rows;
+  }
+  document.getElementById('elTOC').addEventListener('click', () => {
+    const p = createPage(buildTOC());
+    focusPage(p);
+    p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus('Índice generado');
+  });
+
+  /* ---- Tabla e columnas desde el toolbar ---- */
+  function buildTableHTML(rows, cols) {
+    let html = '<table class="tpl-table"><tbody>';
+    for (let r = 0; r < rows; r++) {
+      html += '<tr>';
+      for (let c = 0; c < cols; c++) html += '<td>&nbsp;</td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table><p><br></p>';
+    return html;
+  }
+  document.getElementById('btnInsertTable').addEventListener('click', () => {
+    const rows = parseInt(prompt('Número de filas:', '3'), 10) || 3;
+    const cols = parseInt(prompt('Número de columnas:', '3'), 10) || 3;
+    insertHtmlAtCursor(buildTableHTML(rows, cols));
+    setStatus('Tabla insertada');
+  });
+  document.getElementById('btnToggleColumns').addEventListener('click', () => {
+    if (!currentPage) return;
+    currentPage.classList.toggle('text-columns');
+    setStatus(currentPage.classList.contains('text-columns') ? 'Columnas activadas' : 'Columnas desactivadas');
+  });
+
   document.getElementById('elPagebreak').addEventListener('click', () => {
     const p = createPage();
     focusPage(p);
     p.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+
+  /* ----------------------------------------------------------------------
+     PANEL "HERRAMIENTAS" — acciones a nivel de página/documento
+     ---------------------------------------------------------------------- */
+  document.getElementById('toolWatermark').addEventListener('click', () => {
+    if (!currentPage) return;
+    const text = prompt('Texto de la marca de agua:', 'CONFIDENCIAL');
+    if (!text) return;
+    let wm = currentPage.querySelector('.page-watermark');
+    if (!wm) {
+      wm = document.createElement('div');
+      wm.className = 'page-watermark';
+      wm.contentEditable = 'false';
+      currentPage.insertBefore(wm, currentPage.firstChild);
+    }
+    wm.innerHTML = '<span>' + text + '</span>';
+    setStatus('Marca de agua aplicada');
+  });
+
+  document.getElementById('toolPageNumbers').addEventListener('click', () => {
+    const pages = Array.from(pagesEl.querySelectorAll('.page'));
+    const already = pages.length && pages[0].querySelector('.page-footer.auto-pagenum');
+    pages.forEach((page, i) => {
+      let ft = page.querySelector('.page-footer.auto-pagenum');
+      if (already) {
+        if (ft) ft.remove();
+      } else {
+        if (!ft) {
+          ft = document.createElement('div');
+          ft.className = 'page-footer auto-pagenum';
+          ft.contentEditable = 'false';
+          page.appendChild(ft);
+        }
+        ft.innerHTML = '<span></span><span>Página ' + (i + 1) + ' de ' + pages.length + '</span>';
+      }
+    });
+    setStatus(already ? 'Numeración quitada' : 'Numeración de páginas aplicada');
+  });
+
+  document.getElementById('toolHeaderFooter').addEventListener('click', () => {
+    if (!currentPage) return;
+    const headerText = prompt('Texto de encabezado (vacío para omitir):', '');
+    const footerText = prompt('Texto de pie de página (vacío para omitir):', '');
+    if (headerText) {
+      let hd = currentPage.querySelector('.page-header');
+      if (!hd) {
+        hd = document.createElement('div');
+        hd.className = 'page-header';
+        hd.contentEditable = 'false';
+        currentPage.insertBefore(hd, currentPage.firstChild);
+      }
+      hd.textContent = headerText;
+    }
+    if (footerText) {
+      let ft = currentPage.querySelector('.page-footer:not(.auto-pagenum)');
+      if (!ft) {
+        ft = document.createElement('div');
+        ft.className = 'page-footer';
+        ft.contentEditable = 'false';
+        currentPage.appendChild(ft);
+      }
+      ft.innerHTML = '<span>' + footerText + '</span><span></span>';
+    }
+    setStatus('Encabezado/pie aplicado');
+  });
+
+  document.getElementById('toolTOC').addEventListener('click', () => document.getElementById('elTOC').click());
+  document.getElementById('toolQR').addEventListener('click', () => document.getElementById('elQR').click());
+  document.getElementById('toolStamp').addEventListener('click', () => {
+    const text = prompt('Texto del sello:', 'APROBADO');
+    if (text) insertStamp(text);
+  });
+  document.getElementById('toolTable').addEventListener('click', () => document.getElementById('btnInsertTable').click());
+  document.getElementById('toolColumns').addEventListener('click', () => document.getElementById('btnToggleColumns').click());
 
   /* ----------------------------------------------------------------------
      PESTAÑAS DEL SIDEBAR
@@ -445,6 +732,81 @@
           <div class="tpl-signature-line">Firma 2</div>
         </div>
       </div>`,
+
+    tarjeta: () => `
+      <div style="max-width:340px;margin:40px auto;padding:26px;border:1px solid #ddd;border-radius:8px;">
+        <p style="font-family:'Playfair Display',serif;font-size:22px;margin:0;"><span class="fx fx-dorado">Nombre Apellido</span></p>
+        <p class="tpl-subtitle" style="margin:4px 0 14px;">Cargo profesional</p>
+        <p style="font-size:12.5px;color:#555;margin:0;">correo@ejemplo.com</p>
+        <p style="font-size:12.5px;color:#555;margin:0;">+1 000 000 0000</p>
+        <p style="font-size:12.5px;color:#555;margin:0;">www.sitio.com</p>
+      </div>`,
+
+    boletin: () => `
+      <p style="font-family:'Bebas Neue',sans-serif;font-size:38px;text-align:center;margin:0;">BOLETÍN MENSUAL</p>
+      <p class="tpl-subtitle" style="text-align:center;">Edición N.º 01 · ${new Date().toLocaleDateString('es-ES')}</p>
+      <hr class="tpl-divider">
+      <div class="text-columns">
+        <p class="tpl-section">Tema principal</p>
+        <p>Escribe aquí la nota destacada de esta edición, con los datos y contexto más relevantes.</p>
+        <p class="tpl-section">Novedades</p>
+        <p>Una breve sección con actualizaciones, anuncios o próximos eventos.</p>
+      </div>`,
+
+    informe: () => `
+      <p style="text-align:center;color:#8a6633;font-family:var(--font-mono, monospace);letter-spacing:.15em;text-transform:uppercase;font-size:11px;">Informe ejecutivo</p>
+      <p class="tpl-title" style="text-align:center;font-size:30px;">Título del informe</p>
+      <p class="tpl-subtitle" style="text-align:center;">${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <p class="tpl-section">1. Resumen ejecutivo</p>
+      <p>Síntesis del contenido, objetivos y principales hallazgos del informe.</p>
+      <p class="tpl-section">2. Desarrollo</p>
+      <p>Detalle de los puntos analizados, con datos de respaldo cuando corresponda.</p>
+      <p class="tpl-section">3. Conclusiones</p>
+      <p>Cierre con recomendaciones o próximos pasos.</p>`,
+
+    propuesta: () => `
+      <p class="tpl-title" style="font-size:24px;">Propuesta comercial</p>
+      <p class="tpl-subtitle">Preparado para [Cliente] · ${new Date().toLocaleDateString('es-ES')}</p>
+      <p class="tpl-section">Alcance del proyecto</p>
+      <p>Describe aquí el alcance, objetivos y entregables acordados.</p>
+      <p class="tpl-section">Inversión</p>
+      <table class="tpl-table">
+        <thead><tr><th>Servicio</th><th>Detalle</th><th>Precio</th></tr></thead>
+        <tbody>
+          <tr><td>Desarrollo</td><td>Alcance completo</td><td>$0.00</td></tr>
+          <tr><td>Mantenimiento</td><td>Mensual</td><td>$0.00</td></tr>
+        </tbody>
+      </table>
+      <p class="tpl-section">Condiciones</p>
+      <p>Plazos de entrega, forma de pago y vigencia de la propuesta.</p>`,
+
+    menu: () => `
+      <p style="text-align:center;font-family:'Cinzel',serif;font-size:26px;letter-spacing:.08em;"><span class="fx fx-dorado">MENÚ</span></p>
+      <hr class="tpl-divider" style="width:40%;margin:14px auto;">
+      <p class="tpl-section" style="text-align:center;border:none;">Entradas</p>
+      <p style="display:flex;justify-content:space-between;"><span>Plato de entrada</span><span>$0.00</span></p>
+      <p style="display:flex;justify-content:space-between;"><span>Plato de entrada</span><span>$0.00</span></p>
+      <p class="tpl-section" style="text-align:center;border:none;">Platos fuertes</p>
+      <p style="display:flex;justify-content:space-between;"><span>Plato principal</span><span>$0.00</span></p>
+      <p style="display:flex;justify-content:space-between;"><span>Plato principal</span><span>$0.00</span></p>
+      <p class="tpl-section" style="text-align:center;border:none;">Postres</p>
+      <p style="display:flex;justify-content:space-between;"><span>Postre</span><span>$0.00</span></p>`,
+
+    agenda: () => `
+      <p class="tpl-title" style="font-size:22px;">Agenda de reunión</p>
+      <p class="tpl-subtitle">${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })} · Hora · Lugar/Enlace</p>
+      <p class="tpl-section">Objetivos</p>
+      <p>Qué se busca lograr en esta reunión.</p>
+      <p class="tpl-section">Temas a tratar</p>
+      <table class="tpl-table">
+        <thead><tr><th>#</th><th>Tema</th><th>Responsable</th><th>Tiempo</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Tema uno</td><td>—</td><td>10 min</td></tr>
+          <tr><td>2</td><td>Tema dos</td><td>—</td><td>10 min</td></tr>
+        </tbody>
+      </table>
+      <p class="tpl-section">Próximos pasos</p>
+      <p>Acciones y responsables acordados al cierre.</p>`,
   };
 
   document.querySelectorAll('.tpl-card').forEach((btn) => {
