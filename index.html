@@ -15,6 +15,7 @@
     <div class="mark">HERI<em>&nbsp;PDF</em></div>
     <input type="text" id="docTitle" value="documento-sin-titulo" spellcheck="false">
     <div class="spacer"></div>
+    <a class="btn-excel" id="btnCreateExcel" href="https://cybersecureaid.github.io/HeriExel.Pro/" target="_blank" rel="noopener noreferrer" title="Crear una hoja de cálculo Excel">📊 Crear Excel</a>
     <div class="status"><span class="dot"></span><span id="statusText">Listo</span></div>
     <button class="btn-export" id="btnExport">Exportar PDF</button>
   </header>
@@ -30,6 +31,10 @@
       <select class="tsel" id="pageSizeSelect" title="Tamaño de página">
         <option value="a4">A4</option>
         <option value="carta">Carta</option>
+      </select>
+      <select class="tsel" id="pageOrientationSelect" title="Orientación de la hoja" style="max-width:110px;">
+        <option value="portrait">↕ Vertical</option>
+        <option value="landscape">↔ Horizontal</option>
       </select>
       <input type="color" class="tcolor" id="pageBgColor" value="#ffffff" title="Color de fondo de la página">
     </div>
@@ -125,12 +130,12 @@
         <button class="active" data-tab="templates">Plantillas</button>
         <button data-tab="textures">Texturas</button>
         <button data-tab="elements">Elementos</button>
-        <button data-tab="fonts">Fuentes</button>
         <button data-tab="tools">Herramientas</button>
       </div>
 
       <div class="sidebar-panel active" id="panel-templates">
         <p class="panel-title">Insertar como hoja nueva</p>
+        <button class="tpl-card tpl-card-highlight" id="tplImg2Pdf"><div class="t-name">🖼 Convertir imágenes a PDF</div><div class="t-desc">Carga fotos de un documento y expórtalas como PDF</div></button>
         <button class="tpl-card" data-tpl="blank"><div class="t-name">Página en blanco</div><div class="t-desc">Lienzo vacío, listo para escribir</div></button>
         <button class="tpl-card" data-tpl="carta"><div class="t-name">Carta comercial</div><div class="t-desc">Membrete, cuerpo y firma</div></button>
         <button class="tpl-card" data-tpl="cv"><div class="t-name">Currículum</div><div class="t-desc">Perfil, experiencia, educación</div></button>
@@ -188,17 +193,9 @@
         <button class="el-btn" id="elShapeCircle">● Círculo de color</button>
         <button class="el-btn" id="elShapeLine">— Línea gruesa decorativa</button>
         <button class="el-btn" id="elStamp">🔴 Sello "APROBADO"</button>
-        <button class="el-btn" id="elQR">▦ Código QR</button>
         <button class="el-btn" id="elChecklist">☑ Lista de verificación</button>
         <button class="el-btn" id="elCallout">💬 Recuadro destacado</button>
         <button class="el-btn" id="elTOC">📑 Tabla de contenidos automática</button>
-      </div>
-
-      <!-- Panel: galería de fuentes (generado dinámicamente desde fonts.js) -->
-      <div class="sidebar-panel" id="panel-fonts">
-        <p class="panel-title">Fuentes disponibles</p>
-        <input type="text" class="font-search" id="fontSearch" placeholder="Buscar tipografía…">
-        <div id="fontGallery"><!-- generado por app.js a partir de HERI_FONTS --></div>
       </div>
 
       <!-- Panel: herramientas extra tipo Acrobat -->
@@ -209,7 +206,6 @@
           <button class="tool-card" id="toolPageNumbers"><span class="tc-icon">🔢</span><span class="tc-name">Numeración de páginas</span></button>
           <button class="tool-card" id="toolHeaderFooter"><span class="tc-icon">📰</span><span class="tc-name">Encabezado / pie</span></button>
           <button class="tool-card" id="toolTOC"><span class="tc-icon">📑</span><span class="tc-name">Índice / TOC</span></button>
-          <button class="tool-card" id="toolQR"><span class="tc-icon">▦</span><span class="tc-name">Generar QR</span></button>
           <button class="tool-card" id="toolStamp"><span class="tc-icon">🔴</span><span class="tc-name">Sellos</span></button>
           <button class="tool-card" id="toolTable"><span class="tc-icon">▦</span><span class="tc-name">Insertar tabla</span></button>
           <button class="tool-card" id="toolColumns"><span class="tc-icon">❘❘</span><span class="tc-name">Columnas</span></button>
@@ -238,10 +234,50 @@
   <span id="zoomValue">90%</span>
 </div>
 
+<!-- Pie de página: contratar desarrollador -->
+<footer class="dev-footer">
+  <button class="btn-hire" id="btnHireDev">Hire Developer</button>
+</footer>
+
+<!-- Modal: contratar desarrollador -->
+<div class="modal-overlay" id="hireDevModal">
+  <div class="modal-box">
+    <button class="modal-close" id="hireDevClose" aria-label="Cerrar">✕</button>
+    <p class="modal-title">¿Necesitas un desarrollador para tu proyecto?</p>
+    <p class="modal-text">
+      Si tienes un proyecto en mente o quieres crear tu página web, puedo ayudarte a construir
+      prácticamente cualquier tipo de software que necesites: sitios web, tiendas en línea,
+      aplicaciones a medida, integraciones y mucho más, adaptado exactamente a lo que tu
+      negocio requiere.
+    </p>
+    <a class="modal-cta" href="https://wa.me/5358648458" target="_blank" rel="noopener noreferrer">
+      💬 Contactar por WhatsApp
+    </a>
+  </div>
+</div>
+
+<!-- Modal: convertir imágenes a PDF -->
+<div class="modal-overlay" id="img2pdfModal">
+  <div class="modal-box modal-box-wide">
+    <button class="modal-close" id="img2pdfClose" aria-label="Cerrar">✕</button>
+    <p class="modal-title">Convertir imágenes a PDF</p>
+    <p class="modal-text">
+      Carga las fotos de tu documento, ordénalas, ajusta cómo se ven en la hoja y genera
+      las páginas listas para exportar como PDF.
+    </p>
+    <input type="file" id="img2pdfInput" accept="image/*" multiple hidden>
+    <button class="img2pdf-upload-btn" id="img2pdfUploadBtn">＋ Seleccionar imágenes</button>
+    <div class="img2pdf-list" id="img2pdfList"><!-- generado por app.js --></div>
+    <div class="img2pdf-actions">
+      <span class="img2pdf-count" id="img2pdfCount">0 imágenes</span>
+      <button class="tool-popover-apply-btn img2pdf-generate-btn" id="img2pdfGenerate">Generar páginas</button>
+    </div>
+  </div>
+</div>
+
 <!-- Librerías para exportación PDF de alta calidad (auto-contenidas vía CDN) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="fonts.js"></script>
 <script src="app.js"></script>
 </body>

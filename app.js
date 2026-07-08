@@ -13,11 +13,13 @@
   const pagesEl      = document.getElementById('pages');
   const statusText   = document.getElementById('statusText');
   const pageSizeSel  = document.getElementById('pageSizeSelect');
+  const pageOrientSel = document.getElementById('pageOrientationSelect');
 
   let currentPage  = null;   // <div class="page"> con el foco actual
   let savedRange   = null;   // última selección dentro de una página
   let pageCounter  = 0;
-  let docPageSize  = 'a4';   // 'a4' | 'carta'
+  let docPageSize  = 'a4';        // 'a4' | 'carta'
+  let docOrientation = 'portrait'; // 'portrait' | 'landscape'
 
   /* ----------------------------------------------------------------------
      UTILIDADES DE SELECCIÓN
@@ -65,8 +67,9 @@
   }
 
   function applyPageSizeClass(page) {
-    page.classList.remove('page-a4', 'page-carta');
+    page.classList.remove('page-a4', 'page-carta', 'page-landscape');
     page.classList.add(docPageSize === 'carta' ? 'page-carta' : 'page-a4');
+    if (docOrientation === 'landscape') page.classList.add('page-landscape');
   }
 
   function createPage(innerHTML) {
@@ -155,6 +158,12 @@
     docPageSize = pageSizeSel.value;
     Array.from(pagesEl.children).forEach(applyPageSizeClass);
     setStatus('Tamaño de página actualizado');
+  });
+
+  pageOrientSel.addEventListener('change', () => {
+    docOrientation = pageOrientSel.value;
+    Array.from(pagesEl.children).forEach(applyPageSizeClass);
+    setStatus(docOrientation === 'landscape' ? 'Orientación horizontal' : 'Orientación vertical');
   });
 
   document.getElementById('pageBgColor').addEventListener('change', (e) => {
@@ -259,6 +268,7 @@
         const opt = document.createElement('option');
         opt.value = f.css;
         opt.textContent = f.name;
+        opt.style.fontFamily = f.css;
         if (f.name === 'Lora') opt.selected = true;
         og.appendChild(opt);
       });
@@ -286,28 +296,6 @@
     wrapSelectionWithStyle({ letterSpacing: e.target.value });
     setStatus('Espaciado aplicado');
   });
-
-  /* ---- Galería de fuentes en el sidebar (panel "Fuentes") ---- */
-  const fontGallery = document.getElementById('fontGallery');
-  function renderFontGallery(filter) {
-    const q = (filter || '').toLowerCase().trim();
-    fontGallery.innerHTML = '';
-    FONTS.filter((f) => !q || f.name.toLowerCase().includes(q)).forEach((f) => {
-      const card = document.createElement('button');
-      card.className = 'font-card';
-      card.innerHTML =
-        '<div class="f-preview" style="font-family:' + f.css + ';">Aa Bb — HERI PDF</div>' +
-        '<div class="f-name">' + f.name + '</div>';
-      card.addEventListener('click', () => {
-        wrapSelectionWithStyle({ fontFamily: f.css });
-        fontFamilySel.value = f.css;
-        setStatus('Tipografía "' + f.name + '" aplicada');
-      });
-      fontGallery.appendChild(card);
-    });
-  }
-  renderFontGallery('');
-  document.getElementById('fontSearch').addEventListener('input', (e) => renderFontGallery(e.target.value));
 
   document.getElementById('textColor').addEventListener('change', (e) => {
     wrapSelectionWithStyle({ color: e.target.value });
@@ -513,22 +501,6 @@
     insertHtmlAtCursor('<span class="stamp-el" contenteditable="false">' + (text || 'APROBADO') + '</span>');
   }
   document.getElementById('elStamp').addEventListener('click', () => insertStamp('APROBADO'));
-  function insertQR(text) {
-    const data = text || 'https://';
-    const box = document.createElement('div');
-    try {
-      /* eslint-disable no-undef */
-      new QRCode(box, { text: data, width: 110, height: 110 });
-      insertHtmlAtCursor('<span class="qr-wrap" contenteditable="false">' + box.innerHTML + '</span>');
-      setStatus('Código QR insertado');
-    } catch (err) {
-      setStatus('No se pudo generar el QR (sin conexión)');
-    }
-  }
-  document.getElementById('elQR').addEventListener('click', () => {
-    const text = prompt('Texto o URL para el código QR:', 'https://');
-    if (text) insertQR(text);
-  });
   document.getElementById('elChecklist').addEventListener('click', () =>
     insertHtmlAtCursor('<p>☐ Elemento uno</p><p>☐ Elemento dos</p><p>☐ Elemento tres</p>')
   );
@@ -651,7 +623,6 @@
   });
 
   document.getElementById('toolTOC').addEventListener('click', () => document.getElementById('elTOC').click());
-  document.getElementById('toolQR').addEventListener('click', () => document.getElementById('elQR').click());
   document.getElementById('toolStamp').addEventListener('click', () => {
     const text = prompt('Texto del sello:', 'APROBADO');
     if (text) insertStamp(text);
@@ -809,7 +780,7 @@
       <p>Acciones y responsables acordados al cierre.</p>`,
   };
 
-  document.querySelectorAll('.tpl-card').forEach((btn) => {
+  document.querySelectorAll('.tpl-card[data-tpl]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const html = TEMPLATES[btn.dataset.tpl] ? TEMPLATES[btn.dataset.tpl]() : '<p><br></p>';
       const p = createPage(html);
@@ -817,6 +788,138 @@
       p.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setStatus('Plantilla insertada');
     });
+  });
+
+  /* ----------------------------------------------------------------------
+     MODAL: CONTRATAR DESARROLLADOR
+     ---------------------------------------------------------------------- */
+  const hireDevModal = document.getElementById('hireDevModal');
+  document.getElementById('btnHireDev').addEventListener('click', () => hireDevModal.classList.add('show'));
+  document.getElementById('hireDevClose').addEventListener('click', () => hireDevModal.classList.remove('show'));
+  hireDevModal.addEventListener('click', (e) => {
+    if (e.target === hireDevModal) hireDevModal.classList.remove('show');
+  });
+
+  /* ----------------------------------------------------------------------
+     CONVERTIR IMÁGENES A PDF
+     Flujo: cargar imágenes → ordenar → elegir ajuste (cubrir/ajustar) y,
+     en modo "cubrir", desplazar el recorte con sliders X/Y → generar una
+     hoja nueva a sangre completa por cada imagen, en el orden elegido.
+     ---------------------------------------------------------------------- */
+  const img2pdfModal   = document.getElementById('img2pdfModal');
+  const img2pdfInput   = document.getElementById('img2pdfInput');
+  const img2pdfList    = document.getElementById('img2pdfList');
+  const img2pdfCount   = document.getElementById('img2pdfCount');
+  const img2pdfGenBtn  = document.getElementById('img2pdfGenerate');
+  let img2pdfItems = []; // { id, dataUrl, fit: 'cover'|'contain', posX, posY }
+  let img2pdfCounter = 0;
+
+  function openImg2pdfModal() {
+    img2pdfModal.classList.add('show');
+  }
+  function closeImg2pdfModal() {
+    img2pdfModal.classList.remove('show');
+  }
+  document.getElementById('tplImg2Pdf').addEventListener('click', openImg2pdfModal);
+  document.getElementById('img2pdfClose').addEventListener('click', closeImg2pdfModal);
+  img2pdfModal.addEventListener('click', (e) => {
+    if (e.target === img2pdfModal) closeImg2pdfModal();
+  });
+  document.getElementById('img2pdfUploadBtn').addEventListener('click', () => img2pdfInput.click());
+
+  img2pdfInput.addEventListener('change', (e) => {
+    Array.from(e.target.files).forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        img2pdfCounter += 1;
+        img2pdfItems.push({
+          id: 'img' + img2pdfCounter,
+          dataUrl: ev.target.result,
+          fit: 'cover',
+          posX: 50,
+          posY: 50,
+        });
+        renderImg2pdfList();
+      };
+      reader.readAsDataURL(file);
+    });
+    img2pdfInput.value = '';
+  });
+
+  function renderImg2pdfList() {
+    img2pdfList.innerHTML = '';
+    img2pdfItems.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'img2pdf-item';
+      row.innerHTML =
+        '<div class="i-thumb" style="background-image:url(' + item.dataUrl + ')"></div>' +
+        '<div class="i-controls">' +
+          '<label>Ajuste en la hoja</label>' +
+          '<select class="i-fit">' +
+            '<option value="cover"' + (item.fit === 'cover' ? ' selected' : '') + '>Pantalla completa (recortar bordes)</option>' +
+            '<option value="contain"' + (item.fit === 'contain' ? ' selected' : '') + '>Ajustar sin recortar</option>' +
+          '</select>' +
+          (item.fit === 'cover'
+            ? '<label>Recorte horizontal</label><input type="range" class="i-posx" min="0" max="100" value="' + item.posX + '">' +
+              '<label>Recorte vertical</label><input type="range" class="i-posy" min="0" max="100" value="' + item.posY + '">'
+            : '') +
+        '</div>' +
+        '<div class="i-actions">' +
+          '<button class="i-up" title="Subir">▲</button>' +
+          '<button class="i-down" title="Bajar">▼</button>' +
+          '<button class="i-remove" title="Quitar">✕</button>' +
+        '</div>';
+
+      row.querySelector('.i-fit').addEventListener('change', (e) => {
+        item.fit = e.target.value;
+        renderImg2pdfList();
+      });
+      const posxEl = row.querySelector('.i-posx');
+      const posyEl = row.querySelector('.i-posy');
+      if (posxEl) posxEl.addEventListener('input', (e) => (item.posX = +e.target.value));
+      if (posyEl) posyEl.addEventListener('input', (e) => (item.posY = +e.target.value));
+
+      row.querySelector('.i-up').addEventListener('click', () => {
+        if (idx === 0) return;
+        [img2pdfItems[idx - 1], img2pdfItems[idx]] = [img2pdfItems[idx], img2pdfItems[idx - 1]];
+        renderImg2pdfList();
+      });
+      row.querySelector('.i-down').addEventListener('click', () => {
+        if (idx === img2pdfItems.length - 1) return;
+        [img2pdfItems[idx + 1], img2pdfItems[idx]] = [img2pdfItems[idx], img2pdfItems[idx + 1]];
+        renderImg2pdfList();
+      });
+      row.querySelector('.i-remove').addEventListener('click', () => {
+        img2pdfItems.splice(idx, 1);
+        renderImg2pdfList();
+      });
+
+      img2pdfList.appendChild(row);
+    });
+    img2pdfCount.textContent = img2pdfItems.length + (img2pdfItems.length === 1 ? ' imagen' : ' imágenes');
+    img2pdfGenBtn.disabled = img2pdfItems.length === 0;
+  }
+  renderImg2pdfList();
+
+  img2pdfGenBtn.addEventListener('click', () => {
+    if (!img2pdfItems.length) return;
+    img2pdfItems.forEach((item) => {
+      const bgStyle = item.fit === 'cover'
+        ? 'background-size:cover;background-position:' + item.posX + '% ' + item.posY + '%;'
+        : 'background-size:contain;background-position:center;background-color:#fff;';
+      const page = createPage(
+        '<div class="img-full-bg" contenteditable="false" style="background-image:url(' + item.dataUrl + ');' + bgStyle + '"></div>'
+      );
+      page.classList.add('page-image-full');
+    });
+    const lastPage = pagesEl.lastElementChild;
+    focusPage(lastPage);
+    lastPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus(img2pdfItems.length + ' página(s) generadas desde imágenes');
+    img2pdfItems = [];
+    renderImg2pdfList();
+    closeImg2pdfModal();
   });
 
   /* ----------------------------------------------------------------------
@@ -860,8 +963,12 @@
 
       const { jsPDF } = window.jspdf;
       const format = docPageSize === 'carta' ? 'letter' : 'a4';
-      const dims = docPageSize === 'carta' ? { w: 216, h: 279 } : { w: 210, h: 297 };
-      const doc = new jsPDF({ unit: 'mm', format, orientation: 'portrait' });
+      const baseDims = docPageSize === 'carta' ? { w: 216, h: 279 } : { w: 210, h: 297 };
+      const orientation = docOrientation === 'landscape' ? 'landscape' : 'portrait';
+      const dims = orientation === 'landscape'
+        ? { w: baseDims.h, h: baseDims.w }
+        : baseDims;
+      const doc = new jsPDF({ unit: 'mm', format, orientation });
 
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
@@ -879,7 +986,7 @@
 
         page.classList.remove('exporting');
         const imgData = canvas.toDataURL('image/png', 1.0);
-        if (i > 0) doc.addPage(format, 'portrait');
+        if (i > 0) doc.addPage(format, orientation);
         doc.addImage(imgData, 'PNG', 0, 0, dims.w, dims.h, undefined, 'FAST');
       }
 
