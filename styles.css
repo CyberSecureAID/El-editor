@@ -1,0 +1,506 @@
+/* =========================================================================
+   EDITOR DE DOCUMENTOS — hoja de estilos
+   Estética: "atelier tipográfico" — mesa de trabajo oscura (grafito) donde
+   flotan hojas de papel iluminadas. Los propios controles de efecto se
+   muestran renderizados con su efecto real (el control es la demostración).
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=Merriweather:wght@400;700&family=Lora:ital@0;1&family=Montserrat:wght@400;600;800&family=Poppins:wght@400;600&family=Raleway:wght@400;700&family=Open+Sans:wght@400;700&family=Roboto:wght@400;700&family=Oswald:wght@400;600&family=Bebas+Neue&family=Pacifico&family=Dancing+Script:wght@600&family=Great+Vibes&family=Caveat:wght@500&family=Courier+Prime&family=Cinzel:wght@600&family=Abril+Fatface&family=Comfortaa:wght@600&display=swap');
+
+:root{
+  /* --- color: mesa de trabajo (grafito cálido) + acento cobre --- */
+  --ink-950:#0c0d10;
+  --ink-900:#15161b;
+  --ink-800:#1e2027;
+  --ink-700:#2a2d35;
+  --ink-600:#383c46;
+  --line:#33363f;
+  --text:#e9e6df;
+  --text-dim:#9a9ea8;
+  --paper:#fbf9f4;
+  --copper:#c08a45;
+  --copper-bright:#e3ae6c;
+  --copper-dim:#8a6633;
+  --teal:#4fd1c5;
+  --danger:#e0654f;
+
+  --font-display:'Fraunces', serif;
+  --font-ui:'Inter', -apple-system, sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+
+  --radius-s:4px;
+  --radius-m:7px;
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+  margin:0; padding:0; height:100%;
+  background:var(--ink-950);
+  color:var(--text);
+  font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;
+}
+
+button{ font-family:inherit; }
+
+::selection{ background:rgba(192,138,69,.35); }
+
+/* =========================================================================
+   SHELL
+   ========================================================================= */
+.app-shell{
+  height:100vh;
+  display:grid;
+  grid-template-rows:auto auto 1fr;
+  grid-template-columns:100%;
+}
+
+/* --- Cabecera de marca --- */
+.brandbar{
+  display:flex; align-items:center; gap:14px;
+  padding:10px 18px;
+  background:var(--ink-900);
+  border-bottom:1px solid var(--line);
+}
+.brandbar .mark{
+  font-family:var(--font-display);
+  font-weight:600; font-style:italic;
+  font-size:20px;
+  letter-spacing:.2px;
+  color:var(--paper);
+}
+.brandbar .mark em{
+  color:var(--copper-bright); font-style:normal;
+}
+.brandbar input#docTitle{
+  background:transparent; border:none; border-bottom:1px solid transparent;
+  color:var(--text-dim); font-family:var(--font-mono); font-size:12.5px;
+  padding:4px 2px; width:260px; letter-spacing:.02em;
+  transition:border-color .15s, color .15s;
+}
+.brandbar input#docTitle:focus{
+  outline:none; color:var(--text); border-bottom-color:var(--copper);
+}
+.brandbar .spacer{ flex:1; }
+.brandbar .status{
+  font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+  display:flex; align-items:center; gap:8px;
+}
+.brandbar .status .dot{
+  width:6px; height:6px; border-radius:50%; background:var(--teal);
+  box-shadow:0 0 6px var(--teal);
+}
+
+.btn-export{
+  background:linear-gradient(135deg, var(--copper-bright), var(--copper));
+  color:#1c1204; border:none; font-weight:700; font-size:13px;
+  padding:9px 16px; border-radius:var(--radius-m); cursor:pointer;
+  letter-spacing:.01em;
+  box-shadow:0 2px 0 var(--copper-dim), 0 6px 16px rgba(192,138,69,.25);
+  transition:transform .12s, box-shadow .12s;
+}
+.btn-export:hover{ transform:translateY(-1px); box-shadow:0 3px 0 var(--copper-dim), 0 10px 20px rgba(192,138,69,.3); }
+.btn-export:active{ transform:translateY(1px); box-shadow:0 1px 0 var(--copper-dim); }
+
+/* =========================================================================
+   TOOLBAR
+   ========================================================================= */
+.toolbar{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding:8px 14px;
+  background:var(--ink-800);
+  border-bottom:1px solid var(--line);
+}
+.toolbar-group{
+  display:flex; align-items:center; gap:4px;
+  padding:4px 8px;
+  background:var(--ink-900);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+}
+.toolbar-group + .toolbar-group{ margin-left:0; }
+
+.tbtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:30px; height:30px; padding:0 8px;
+  background:transparent; border:1px solid transparent; border-radius:var(--radius-s);
+  color:var(--text); cursor:pointer; font-size:13px; font-weight:600;
+  transition:background .12s, border-color .12s, color .12s;
+}
+.tbtn:hover{ background:var(--ink-700); }
+.tbtn.active{ background:rgba(192,138,69,.16); border-color:var(--copper-dim); color:var(--copper-bright); }
+.tbtn svg{ width:15px; height:15px; }
+
+.tsel{
+  height:30px; padding:0 8px; background:var(--ink-800); color:var(--text);
+  border:1px solid var(--line); border-radius:var(--radius-s); font-size:12.5px;
+  cursor:pointer; max-width:170px;
+}
+.tsel:focus{ outline:none; border-color:var(--copper); }
+
+.tcolor{
+  width:28px; height:28px; padding:0; border:1px solid var(--line);
+  border-radius:var(--radius-s); background:var(--ink-800); cursor:pointer;
+}
+.tlabel{
+  font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:.06em; padding:0 4px;
+}
+.tsep{ width:1px; height:20px; background:var(--line); margin:0 4px; }
+
+/* Botones de efecto: cada uno se auto-demuestra con su propio efecto */
+.effect-row{ display:flex; gap:6px; flex-wrap:wrap; }
+.fxbtn{
+  height:30px; padding:0 12px; border-radius:var(--radius-s);
+  background:var(--ink-800); border:1px solid var(--line);
+  font-family:var(--font-display); font-weight:600; font-size:13px;
+  cursor:pointer; color:var(--text);
+}
+.fxbtn.selected{ border-color:var(--copper); box-shadow:0 0 0 1px var(--copper); }
+
+/* =========================================================================
+   WORKSPACE — sidebar + lienzo
+   ========================================================================= */
+.workspace{ display:grid; grid-template-columns:280px 1fr; overflow:hidden; }
+
+.sidebar{
+  background:var(--ink-900); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sidebar-tabs{ display:flex; border-bottom:1px solid var(--line); }
+.sidebar-tabs button{
+  flex:1; padding:11px 4px; background:transparent; border:none;
+  color:var(--text-dim); font-size:11.5px; font-weight:600;
+  letter-spacing:.03em; text-transform:uppercase; cursor:pointer;
+  border-bottom:2px solid transparent;
+}
+.sidebar-tabs button.active{ color:var(--copper-bright); border-bottom-color:var(--copper); }
+
+.sidebar-panel{ display:none; padding:14px; overflow-y:auto; }
+.sidebar-panel.active{ display:block; }
+
+.panel-title{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:.08em; margin:14px 0 8px;
+}
+.panel-title:first-child{ margin-top:0; }
+
+.tpl-card{
+  width:100%; text-align:left; padding:10px 12px; margin-bottom:8px;
+  background:var(--ink-800); border:1px solid var(--line); border-radius:var(--radius-m);
+  color:var(--text); cursor:pointer; transition:border-color .12s, transform .12s;
+}
+.tpl-card:hover{ border-color:var(--copper-dim); transform:translateX(2px); }
+.tpl-card .t-name{ font-weight:600; font-size:13px; }
+.tpl-card .t-desc{ font-size:11.5px; color:var(--text-dim); margin-top:2px; }
+
+.tex-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.tex-swatch{
+  height:56px; border-radius:var(--radius-s); border:1px solid var(--line);
+  cursor:pointer; position:relative; overflow:hidden;
+}
+.tex-swatch span{
+  position:absolute; left:0; right:0; bottom:0; padding:3px 6px;
+  font-size:9.5px; font-family:var(--font-mono); color:#fff;
+  background:rgba(0,0,0,.45); text-align:left;
+}
+.tex-swatch.selected{ outline:2px solid var(--copper); outline-offset:1px; }
+
+.el-btn{
+  width:100%; text-align:left; padding:9px 12px; margin-bottom:6px;
+  background:var(--ink-800); border:1px solid var(--line); border-radius:var(--radius-s);
+  color:var(--text); font-size:12.5px; cursor:pointer;
+}
+.el-btn:hover{ border-color:var(--copper-dim); }
+
+/* =========================================================================
+   LIENZO / PÁGINAS
+   ========================================================================= */
+.canvas-area{
+  position:relative; overflow:auto; background:var(--ink-950);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.035) 1px, transparent 0);
+  background-size:22px 22px;
+  padding:40px 0 120px;
+}
+.pages{
+  display:flex; flex-direction:column; align-items:center; gap:44px;
+  transform-origin:top center;
+}
+
+.page{
+  background:#fff; color:#1a1a1a;
+  box-shadow:0 20px 45px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.02) inset;
+  position:relative; overflow:hidden;
+  font-family:'Lora', serif; font-size:14px; line-height:1.65;
+  padding:22mm 20mm;
+  outline:none;
+}
+.page-a4{ width:210mm; height:297mm; }
+.page-carta{ width:216mm; height:279mm; }
+
+.page.overflow{ box-shadow:0 0 0 2px var(--danger), 0 20px 45px rgba(0,0,0,.55); }
+.page.exporting{ box-shadow:none !important; }
+.page.exporting::after{ display:none !important; }
+
+.page::after{
+  content:attr(data-page-label);
+  position:absolute; bottom:6mm; right:20mm;
+  font-family:var(--font-mono); font-size:9px; color:#00000055;
+}
+
+.page p{ margin:0 0 .8em; }
+.page h1,.page h2,.page h3{ font-family:'Playfair Display', serif; margin:0 0 .4em; }
+.page blockquote{
+  margin:.8em 0; padding:.4em 1em; border-left:3px solid var(--copper);
+  color:#4a4a4a; font-style:italic;
+}
+.page hr{ border:none; border-top:1px solid #00000022; margin:1.2em 0; }
+.page a{ color:#7a4f1e; }
+
+.page-label-badge{
+  position:absolute; top:-24px; left:0; font-family:var(--font-mono);
+  font-size:10px; color:var(--text-dim); pointer-events:none;
+}
+
+/* --- imágenes insertadas --- */
+.img-wrap{
+  display:inline-block; vertical-align:bottom; position:relative;
+  width:280px; height:200px; resize:both; overflow:hidden;
+  border:1px solid #00000018; margin:4px 2px;
+}
+.img-wrap img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+
+/* --- plantillas: bloques auxiliares --- */
+.tpl-title{ font-family:'Playfair Display', serif; font-size:28px; font-weight:700; margin:0 0 4px; }
+.tpl-subtitle{ font-family:'Inter', sans-serif; font-size:13px; color:#666; letter-spacing:.04em; text-transform:uppercase; margin:0 0 18px; }
+.tpl-section{ font-family:'Inter', sans-serif; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8a6633; border-bottom:1px solid #eadfc8; padding-bottom:4px; margin:18px 0 8px; }
+.tpl-label{ font-weight:700; }
+.tpl-signature-line{ margin-top:50px; width:220px; border-top:1px solid #333; padding-top:6px; font-size:11px; color:#555; }
+.tpl-divider{ height:1px; background:linear-gradient(90deg, transparent, #c08a45, transparent); margin:16px 0; border:none; }
+.tpl-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+.tpl-table th{ text-align:left; background:#f4ece0; padding:8px 10px; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:#7a4f1e; }
+.tpl-table td{ padding:8px 10px; border-bottom:1px solid #eee; }
+.tpl-table tfoot td{ font-weight:700; border-top:2px solid #1a1a1a; border-bottom:none; }
+
+/* =========================================================================
+   EFECTOS TIPOGRÁFICOS — "fx"
+   ========================================================================= */
+.fx{ padding:0 1px; }
+
+/* Tornasol: holográfico animado, pastel iridiscente */
+.fx-tornasol{
+  background-image:linear-gradient(90deg,#ff8ad8,#8ad8ff,#b4ff9e,#fff08a,#ff8ad8);
+  background-size:300% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:fxTornasol 4.5s linear infinite;
+}
+@keyframes fxTornasol{ to{ background-position:300% 0; } }
+
+/* Dorado: gradiente metálico con brillo */
+.fx-dorado{
+  background-image:linear-gradient(115deg,#6b4c14,#f3d989,#fffbe6,#caa227,#6b4c14);
+  background-size:260% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 1px 0 rgba(0,0,0,.12);
+  animation:fxDorado 3.2s linear infinite;
+}
+@keyframes fxDorado{ to{ background-position:260% 0; } }
+
+/* Plata: mismo mecanismo, gama fría */
+.fx-plata{
+  background-image:linear-gradient(115deg,#5a5f66,#e9edf1,#ffffff,#aeb4bb,#5a5f66);
+  background-size:260% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:fxDorado 3.2s linear infinite;
+}
+
+/* Fuego */
+.fx-fuego{
+  background-image:linear-gradient(0deg,#7a0d00,#ff4d00,#ffb703,#fff3b0);
+  background-size:100% 260%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:fxFuego 2.4s ease-in-out infinite alternate;
+}
+@keyframes fxFuego{ to{ background-position:0 100%; } }
+
+/* Neón */
+.fx-neon{
+  color:#fff;
+  text-shadow:0 0 4px #6ef7ff, 0 0 10px #6ef7ff, 0 0 22px #23c9d8, 0 0 40px #128a94;
+}
+
+/* Arcoíris — estático, bandas sólidas */
+.fx-arcoiris{
+  background-image:linear-gradient(90deg,#ff4d4d,#ff9f1c,#ffe14d,#5cd85c,#4da6ff,#a26bff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* 3D extrudido */
+.fx-3d{
+  color:#eceff1;
+  text-shadow:1px 1px 0 #cfd4d8,2px 2px 0 #bcc2c8,3px 3px 0 #a9b0b7,
+              4px 4px 0 #969ea6,5px 5px 8px rgba(0,0,0,.45);
+  font-weight:700;
+}
+
+.fx-none{ background:none; -webkit-background-clip:border-box; background-clip:border-box; color:inherit; text-shadow:none; animation:none; }
+
+/* =========================================================================
+   TEXTURAS DE PÁGINA
+   ========================================================================= */
+.tex-none{ background-image:none; }
+
+.tex-paper{
+  background-color:#fbf8f1;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.015) 0 1px, transparent 1px 3px);
+}
+
+.tex-linen{
+  background-color:#faf7f0;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(0,0,0,.035) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.025) 0 1px, transparent 1px 6px);
+}
+
+.tex-dots{
+  background-color:#ffffff;
+  background-image:radial-gradient(rgba(0,0,0,.16) 1px, transparent 1.4px);
+  background-size:16px 16px;
+}
+
+.tex-grid{
+  background-color:#ffffff;
+  background-image:
+    linear-gradient(rgba(60,110,180,.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(60,110,180,.16) 1px, transparent 1px);
+  background-size:10mm 10mm;
+}
+
+.tex-diagonal{
+  background-color:#ffffff;
+  background-image:repeating-linear-gradient(45deg, #f2f2f2 0 10px, #ffffff 10px 20px);
+}
+
+.tex-carbon{
+  background-color:#1c1c1e;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 8px);
+  color:#e8e8e8;
+}
+.tex-carbon .tpl-section{ color:var(--copper-bright); border-color:#3a3a3d; }
+
+.tex-marble{
+  background-color:#f4f2ee;
+  background-image:
+    radial-gradient(120% 60% at 10% 0%, rgba(0,0,0,.05), transparent 60%),
+    radial-gradient(100% 70% at 90% 30%, rgba(0,0,0,.04), transparent 55%),
+    repeating-linear-gradient(120deg, rgba(0,0,0,.03) 0 2px, transparent 2px 40px);
+}
+
+.tex-noise{
+  background-color:#fbfbf9;
+  background-image:
+    repeating-radial-gradient(circle at 20% 20%, rgba(0,0,0,.05) 0 1px, transparent 1px 3px),
+    repeating-radial-gradient(circle at 70% 60%, rgba(0,0,0,.04) 0 1px, transparent 1px 4px);
+}
+
+.tex-notebook{
+  background-color:#ffffff;
+  background-image:
+    linear-gradient(rgba(90,130,210,.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(210,60,60,.35) 1px, transparent 1px);
+  background-size:100% 8mm, 100% 100%;
+  background-position:0 12mm, 24mm 0;
+}
+
+.tex-noche{
+  background-color:#0c1024;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 10%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 40% 70%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 40%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 90% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 25% 85%, #fff, transparent);
+  background-size:100% 100%;
+  color:#eef0ff;
+}
+.tex-noche .tpl-section{ color:var(--copper-bright); border-color:#232a52; }
+
+.tex-kraft{
+  background-color:#c8a874;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 1px, transparent 1px 5px);
+  color:#3a2c15;
+}
+
+.tex-holo{
+  background-image:linear-gradient(120deg,#ffd6f5,#d6e8ff,#d6fff0,#fff6d6,#ffd6f5);
+  background-size:400% 400%;
+  animation:fxHolo 12s ease infinite;
+}
+@keyframes fxHolo{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+
+.tex-goldfoil{
+  background-color:#1a1206;
+  background-image:
+    linear-gradient(120deg,#3a2a0c,#caa227,#fff3c4,#8a6a1e,#3a2a0c);
+  background-size:260% 260%;
+  animation:fxDorado 6s linear infinite;
+  color:#fff3c4;
+}
+.tex-goldfoil .tpl-section{ color:#fff3c4; border-color:#7a5c1e; }
+
+.tex-darkelegant{
+  background-color:#0f1012;
+  background-image:repeating-linear-gradient(0deg, rgba(192,138,69,.09) 0 1px, transparent 1px 26px);
+  color:#eee9df;
+}
+.tex-darkelegant .tpl-section{ color:var(--copper-bright); border-color:#3a3225; }
+
+/* =========================================================================
+   OVERLAY DE CARGA
+   ========================================================================= */
+.loading-overlay{
+  position:fixed; inset:0; background:rgba(12,13,16,.82); backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center; z-index:999; flex-direction:column; gap:14px;
+}
+.loading-overlay.show{ display:flex; }
+.spinner{
+  width:34px; height:34px; border-radius:50%;
+  border:3px solid var(--ink-700); border-top-color:var(--copper-bright);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.loading-overlay p{ font-family:var(--font-mono); font-size:12px; color:var(--text-dim); letter-spacing:.04em; }
+
+/* =========================================================================
+   ZOOM FLOTANTE
+   ========================================================================= */
+.zoom-bar{
+  position:fixed; right:20px; bottom:18px; display:flex; align-items:center; gap:8px;
+  background:var(--ink-800); border:1px solid var(--line); border-radius:var(--radius-m);
+  padding:6px 10px; z-index:50; box-shadow:0 8px 20px rgba(0,0,0,.4);
+}
+.zoom-bar input[type=range]{ width:110px; }
+.zoom-bar span{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); width:40px; text-align:right; }
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+@media (max-width:900px){
+  .workspace{ grid-template-columns:1fr; }
+  .sidebar{ display:none; }
+}
+
+button:focus-visible, select:focus-visible, input:focus-visible{
+  outline:2px solid var(--copper-bright); outline-offset:1px;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .fx-tornasol,.fx-dorado,.fx-plata,.fx-fuego,.tex-holo,.tex-goldfoil{ animation:none; }
+}

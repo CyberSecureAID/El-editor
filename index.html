@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor de Documentos — Nivel Dios</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============================= MARCA ============================= -->
+  <header class="brandbar">
+    <div class="mark">Folio<em>&nbsp;Studio</em></div>
+    <input type="text" id="docTitle" value="documento-sin-titulo" spellcheck="false">
+    <div class="spacer"></div>
+    <div class="status"><span class="dot"></span><span id="statusText">Listo</span></div>
+    <button class="btn-export" id="btnExport">Exportar PDF</button>
+  </header>
+
+  <!-- ============================= TOOLBAR ============================= -->
+  <div class="toolbar">
+
+    <!-- Páginas / plantilla rápida -->
+    <div class="toolbar-group">
+      <span class="tlabel">Página</span>
+      <button class="tbtn" id="btnNewPage" title="Agregar página">+ Hoja</button>
+      <button class="tbtn" id="btnDeletePage" title="Eliminar página actual">− Hoja</button>
+      <select class="tsel" id="pageSizeSelect" title="Tamaño de página">
+        <option value="a4">A4</option>
+        <option value="carta">Carta</option>
+      </select>
+      <input type="color" class="tcolor" id="pageBgColor" value="#ffffff" title="Color de fondo de la página">
+    </div>
+
+    <!-- Fuente -->
+    <div class="toolbar-group">
+      <select class="tsel" id="fontFamily" title="Tipografía">
+        <option value="'Lora', serif" selected>Lora</option>
+        <option value="'Playfair Display', serif">Playfair Display</option>
+        <option value="'Merriweather', serif">Merriweather</option>
+        <option value="'Cinzel', serif">Cinzel</option>
+        <option value="'Abril Fatface', serif">Abril Fatface</option>
+        <option value="'Inter', sans-serif">Inter</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
+        <option value="'Poppins', sans-serif">Poppins</option>
+        <option value="'Raleway', sans-serif">Raleway</option>
+        <option value="'Open Sans', sans-serif">Open Sans</option>
+        <option value="'Roboto', sans-serif">Roboto</option>
+        <option value="'Oswald', sans-serif">Oswald</option>
+        <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+        <option value="'Comfortaa', sans-serif">Comfortaa</option>
+        <option value="'Pacifico', cursive">Pacifico</option>
+        <option value="'Dancing Script', cursive">Dancing Script</option>
+        <option value="'Great Vibes', cursive">Great Vibes</option>
+        <option value="'Caveat', cursive">Caveat</option>
+        <option value="'Courier Prime', monospace">Courier Prime</option>
+      </select>
+      <select class="tsel" id="fontSize" title="Tamaño de fuente" style="max-width:74px;">
+        <option value="9">9pt</option><option value="10">10pt</option>
+        <option value="11">11pt</option><option value="12" selected>12pt</option>
+        <option value="14">14pt</option><option value="16">16pt</option>
+        <option value="18">18pt</option><option value="20">20pt</option>
+        <option value="24">24pt</option><option value="28">28pt</option>
+        <option value="32">32pt</option><option value="40">40pt</option>
+        <option value="54">54pt</option><option value="72">72pt</option>
+      </select>
+    </div>
+
+    <!-- Estilo de caracter -->
+    <div class="toolbar-group">
+      <button class="tbtn" data-cmd="bold" title="Negrita"><b>N</b></button>
+      <button class="tbtn" data-cmd="italic" title="Cursiva"><i>K</i></button>
+      <button class="tbtn" data-cmd="underline" title="Subrayado"><u>S</u></button>
+      <button class="tbtn" data-cmd="strikeThrough" title="Tachado"><s>T</s></button>
+      <div class="tsep"></div>
+      <input type="color" class="tcolor" id="textColor" value="#1a1a1a" title="Color de texto">
+      <input type="color" class="tcolor" id="highlightColor" value="#fff59d" title="Color de resaltado">
+      <button class="tbtn" id="btnClearHighlight" title="Quitar resaltado">⌫</button>
+    </div>
+
+    <!-- Párrafo -->
+    <div class="toolbar-group">
+      <button class="tbtn" data-cmd="justifyLeft" title="Alinear izquierda">⟸</button>
+      <button class="tbtn" data-cmd="justifyCenter" title="Centrar">≡</button>
+      <button class="tbtn" data-cmd="justifyRight" title="Alinear derecha">⟹</button>
+      <button class="tbtn" data-cmd="justifyFull" title="Justificar">☰</button>
+      <div class="tsep"></div>
+      <button class="tbtn" data-cmd="insertUnorderedList" title="Lista">•</button>
+      <button class="tbtn" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button class="tbtn" data-cmd="outdent" title="Reducir sangría">⇤</button>
+      <button class="tbtn" data-cmd="indent" title="Aumentar sangría">⇥</button>
+      <button class="tbtn" data-cmd-block="blockquote" title="Cita">"</button>
+      <button class="tbtn" data-cmd="insertHorizontalRule" title="Línea divisoria">―</button>
+    </div>
+
+    <!-- Insertar / historial -->
+    <div class="toolbar-group">
+      <button class="tbtn" id="btnInsertImage" title="Insertar imagen">🖼</button>
+      <input type="file" id="imageInput" accept="image/*" multiple hidden>
+      <div class="tsep"></div>
+      <button class="tbtn" data-cmd="undo" title="Deshacer (Ctrl+Z)">↺</button>
+      <button class="tbtn" data-cmd="redo" title="Rehacer (Ctrl+Y)">↻</button>
+      <button class="tbtn" data-cmd="removeFormat" title="Limpiar formato">✕</button>
+    </div>
+
+    <!-- Efectos tipográficos -->
+    <div class="toolbar-group effect-row">
+      <span class="tlabel">Efecto</span>
+      <button class="fxbtn" data-fx="none">Normal</button>
+      <button class="fxbtn fx-tornasol" data-fx="tornasol">Tornasol</button>
+      <button class="fxbtn fx-dorado" data-fx="dorado">Dorado</button>
+      <button class="fxbtn fx-plata" data-fx="plata">Plata</button>
+      <button class="fxbtn fx-fuego" data-fx="fuego">Fuego</button>
+      <button class="fxbtn fx-neon" style="background:#0c1024;" data-fx="neon">Neón</button>
+      <button class="fxbtn fx-arcoiris" data-fx="arcoiris">Arcoíris</button>
+      <button class="fxbtn fx-3d" data-fx="3d">3D</button>
+    </div>
+
+  </div>
+
+  <!-- ============================= WORKSPACE ============================= -->
+  <div class="workspace">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <button class="active" data-tab="templates">Plantillas</button>
+        <button data-tab="textures">Texturas</button>
+        <button data-tab="elements">Elementos</button>
+      </div>
+
+      <div class="sidebar-panel active" id="panel-templates">
+        <p class="panel-title">Insertar como hoja nueva</p>
+        <button class="tpl-card" data-tpl="blank"><div class="t-name">Página en blanco</div><div class="t-desc">Lienzo vacío, listo para escribir</div></button>
+        <button class="tpl-card" data-tpl="carta"><div class="t-name">Carta comercial</div><div class="t-desc">Membrete, cuerpo y firma</div></button>
+        <button class="tpl-card" data-tpl="cv"><div class="t-name">Currículum</div><div class="t-desc">Perfil, experiencia, educación</div></button>
+        <button class="tpl-card" data-tpl="factura"><div class="t-name">Factura</div><div class="t-desc">Tabla de conceptos y totales</div></button>
+        <button class="tpl-card" data-tpl="poster"><div class="t-name">Afiche</div><div class="t-desc">Título grande con efecto tornasol</div></button>
+        <button class="tpl-card" data-tpl="certificado"><div class="t-name">Certificado</div><div class="t-desc">Diseño elegante con acabado dorado</div></button>
+      </div>
+
+      <div class="sidebar-panel" id="panel-textures">
+        <p class="panel-title">Fondo de la página actual</p>
+        <div class="tex-grid" id="textureGrid">
+          <div class="tex-swatch tex-none" data-tex="none"><span>Ninguna</span></div>
+          <div class="tex-swatch tex-paper" data-tex="paper"><span>Papel</span></div>
+          <div class="tex-swatch tex-linen" data-tex="linen"><span>Lino</span></div>
+          <div class="tex-swatch tex-dots" data-tex="dots"><span>Puntos</span></div>
+          <div class="tex-swatch tex-grid" data-tex="grid"><span>Cuadrícula</span></div>
+          <div class="tex-swatch tex-diagonal" data-tex="diagonal"><span>Diagonal</span></div>
+          <div class="tex-swatch tex-carbon" data-tex="carbon"><span>Carbono</span></div>
+          <div class="tex-swatch tex-marble" data-tex="marble"><span>Mármol</span></div>
+          <div class="tex-swatch tex-noise" data-tex="noise"><span>Ruido</span></div>
+          <div class="tex-swatch tex-notebook" data-tex="notebook"><span>Cuaderno</span></div>
+          <div class="tex-swatch tex-noche" data-tex="noche"><span>Noche</span></div>
+          <div class="tex-swatch tex-kraft" data-tex="kraft"><span>Kraft</span></div>
+          <div class="tex-swatch tex-holo" data-tex="holo"><span>Holográfico</span></div>
+          <div class="tex-swatch tex-goldfoil" data-tex="goldfoil"><span>Lámina de oro</span></div>
+          <div class="tex-swatch tex-darkelegant" data-tex="darkelegant"><span>Elegante oscuro</span></div>
+        </div>
+      </div>
+
+      <div class="sidebar-panel" id="panel-elements">
+        <p class="panel-title">Insertar elemento</p>
+        <button class="el-btn" id="elDivider">— Línea divisoria dorada</button>
+        <button class="el-btn" id="elDate">📅 Fecha de hoy</button>
+        <button class="el-btn" id="elSignature">✒ Línea de firma</button>
+        <button class="el-btn" id="elQuote">" Bloque de cita</button>
+        <button class="el-btn" id="elPagebreak">⤓ Salto de página (hoja nueva)</button>
+      </div>
+    </aside>
+
+    <!-- LIENZO -->
+    <main class="canvas-area" id="canvasArea">
+      <div class="pages" id="pages"></div>
+    </main>
+
+  </div>
+</div>
+
+<!-- Overlay de carga durante exportación -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p id="loadingText">Generando PDF en alta calidad…</p>
+</div>
+
+<!-- Barra de zoom -->
+<div class="zoom-bar">
+  <span class="tlabel" style="padding:0;">Zoom</span>
+  <input type="range" id="zoomRange" min="40" max="150" value="90">
+  <span id="zoomValue">90%</span>
+</div>
+
+<!-- Librerías para exportación PDF de alta calidad (auto-contenidas vía CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
