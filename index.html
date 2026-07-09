@@ -149,6 +149,24 @@
       </div>
     </div>
 
+    <!-- Editar imagen: reajusta la imagen de una hoja generada con "Convertir
+         imágenes a PDF" (encuadre y brillo/contraste) sin borrar la hoja -->
+    <div class="toolbar-group" style="position:relative;">
+      <button class="fx-trigger" id="imgEditTrigger" title="Selecciona una hoja de imagen y toca aquí para reajustarla">🖼️ Editar imagen</button>
+      <div class="tool-popover" id="imgEditPopover">
+        <p class="panel-title">Arrastra la imagen para moverla · arrastra la esquina ◢ para escalarla</p>
+        <div class="row2">
+          <button type="button" class="apply-btn" id="imgEditFitCover">Cubrir hoja</button>
+          <button type="button" class="apply-btn" id="imgEditFitContain">Ver completa</button>
+        </div>
+        <label>Brillo (blancos) <span id="imgEditBrightVal">100%</span></label>
+        <input type="range" id="imgEditBrightness" min="60" max="180" value="100">
+        <label>Contraste (negros) <span id="imgEditContrastVal">100%</span></label>
+        <input type="range" id="imgEditContrast" min="60" max="200" value="100">
+        <button type="button" class="apply-btn" id="imgEditReset">↺ Restablecer imagen</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- ============================= WORKSPACE ============================= -->

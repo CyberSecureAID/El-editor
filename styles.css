@@ -417,8 +417,25 @@ button{ font-family:inherit; }
 .page.page-image-full{ padding:0; }
 .page-image-full .img-full-bg{
   position:absolute !important; inset:0; width:100%; height:100%;
-  background-repeat:no-repeat;
+  background-repeat:no-repeat; overflow:hidden;
 }
+
+/* La imagen dentro de la hoja es reajustable: se arrastra para reposicionar
+   y se escala desde la esquina, sin tener que borrar la hoja y empezar de
+   nuevo si la proporción no coincide con el tamaño de página elegido. */
+.img-full-bg .img-crop-img{
+  position:absolute; top:0; left:0; max-width:none; max-height:none;
+  pointer-events:none; user-select:none; -webkit-user-drag:none;
+}
+.img-full-bg.editing{ outline:2px dashed var(--copper-bright); outline-offset:-2px; }
+.img-full-bg.editing .img-crop-img{ pointer-events:auto; cursor:grab; }
+.img-full-bg.editing .img-crop-img:active{ cursor:grabbing; }
+.img-edit-handle{
+  display:none; position:absolute; right:-9px; bottom:-9px; width:18px; height:18px;
+  background:var(--copper-bright); border:2px solid #fff; border-radius:4px;
+  cursor:nwse-resize; z-index:5; box-shadow:0 1px 5px rgba(0,0,0,.45);
+}
+.img-full-bg.editing .img-edit-handle{ display:block; }
 
 .page.overflow{ box-shadow:0 0 0 2px var(--danger), 0 20px 45px rgba(0,0,0,.55); }
 .page.exporting{ box-shadow:none !important; }

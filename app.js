@@ -1145,62 +1145,255 @@
   }
   renderImg2pdfList();
 
-  // Aplica brillo/contraste "horneándolos" en los píxeles de la imagen final,
-  // para que el ajuste se conserve tal cual al exportar el PDF.
-  function bakeImageAdjustments(dataUrl, brightness, contrast) {
-    return new Promise((resolve) => {
-      if (brightness === 100 && contrast === 100) {
-        resolve(dataUrl);
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || img.width;
-          canvas.height = img.naturalHeight || img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.filter = 'brightness(' + brightness + '%) contrast(' + contrast + '%)';
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/jpeg', 0.94));
-        } catch (err) {
-          resolve(dataUrl); // si el canvas falla (p. ej. CORS), usa la original
-        }
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
+  /* ----------------------------------------------------------------------
+     MOTOR DE EDICIÓN DIRECTA DE IMAGEN SOBRE LA HOJA
+     Cada hoja "page-image-full" contiene un <img class="img-crop-img">
+     posicionado y escalado con left/top/width/height en px (no con
+     background-image), para poder arrastrarlo y escalarlo a mano con el
+     mouse en cualquier momento — no solo al crear la hoja. El brillo y
+     contraste se aplican como filtro CSS en vivo (no se "hornean" en los
+     píxeles), así siguen siendo editables después de generar la página.
+     ---------------------------------------------------------------------- */
+  function computeCoverLayout(containerW, containerH, naturalW, naturalH, posX, posY) {
+    const scale = Math.max(containerW / naturalW, containerH / naturalH);
+    const w = naturalW * scale;
+    const h = naturalH * scale;
+    const overflowX = w - containerW;
+    const overflowY = h - containerH;
+    return { w, h, l: -overflowX * (posX / 100), t: -overflowY * (posY / 100) };
+  }
+  function computeContainLayout(containerW, containerH, naturalW, naturalH) {
+    const scale = Math.min(containerW / naturalW, containerH / naturalH);
+    const w = naturalW * scale;
+    const h = naturalH * scale;
+    return { w, h, l: (containerW - w) / 2, t: (containerH - h) / 2 };
   }
 
-  img2pdfGenBtn.addEventListener('click', async () => {
-    if (!img2pdfItems.length) return;
-    img2pdfGenBtn.disabled = true;
-    toggleLoading(true, 'Procesando imágenes…');
-    try {
-      const processed = await Promise.all(
-        img2pdfItems.map((item) => bakeImageAdjustments(item.dataUrl, item.brightness, item.contrast))
-      );
-      img2pdfItems.forEach((item, idx) => {
-        const finalUrl = processed[idx];
-        const bgStyle = item.fit === 'cover'
-          ? 'background-size:cover;background-position:' + item.posX + '% ' + item.posY + '%;'
-          : 'background-size:contain;background-position:center;background-color:#fff;';
-        const page = createPage(
-          '<div class="img-full-bg" contenteditable="false" style="background-image:url(' + finalUrl + ');' + bgStyle + '"></div>'
-        );
-        page.classList.add('page-image-full');
-      });
-      const lastPage = pagesEl.lastElementChild;
-      focusPage(lastPage);
-      lastPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus(img2pdfItems.length + ' página(s) generadas desde imágenes');
-      img2pdfItems = [];
-      renderImg2pdfList();
-      closeImg2pdfModal();
-    } finally {
-      toggleLoading(false);
-      img2pdfGenBtn.disabled = img2pdfItems.length === 0;
+  // Vincula una hoja "page-image-full" con su motor de arrastre/escalado.
+  // initial: { fit, posX, posY, brightness, contrast }
+  function setupImageEditor(bg, imgEl, initial) {
+    const state = {
+      fit: initial.fit || 'cover',
+      brightness: initial.brightness || 100,
+      contrast: initial.contrast || 100,
+      naturalW: 0, naturalH: 0,
+      w: 0, h: 0, l: 0, t: 0,
+    };
+    bg._imgState = state;
+
+    function applyFilter() {
+      imgEl.style.filter = 'brightness(' + state.brightness + '%) contrast(' + state.contrast + '%)';
     }
+    function applyPosition() {
+      imgEl.style.width = state.w + 'px';
+      imgEl.style.height = state.h + 'px';
+      imgEl.style.left = state.l + 'px';
+      imgEl.style.top = state.t + 'px';
+    }
+    function containerSize() {
+      return { w: bg.offsetWidth, h: bg.offsetHeight };
+    }
+    function fitCover(posX, posY) {
+      const c = containerSize();
+      const l = computeCoverLayout(c.w, c.h, state.naturalW, state.naturalH, posX != null ? posX : 50, posY != null ? posY : 50);
+      state.w = l.w; state.h = l.h; state.l = l.l; state.t = l.t;
+      state.fit = 'cover';
+      bg.style.backgroundColor = '';
+      applyPosition();
+    }
+    function fitContain() {
+      const c = containerSize();
+      const l = computeContainLayout(c.w, c.h, state.naturalW, state.naturalH);
+      state.w = l.w; state.h = l.h; state.l = l.l; state.t = l.t;
+      state.fit = 'contain';
+      bg.style.backgroundColor = '#fff';
+      applyPosition();
+    }
+    function initLayout() {
+      state.naturalW = imgEl.naturalWidth || 1;
+      state.naturalH = imgEl.naturalHeight || 1;
+      if (state.fit === 'contain') fitContain();
+      else fitCover(initial.posX, initial.posY);
+      applyFilter();
+    }
+    if (imgEl.complete && imgEl.naturalWidth) initLayout();
+    else imgEl.addEventListener('load', initLayout, { once: true });
+
+    // ---- arrastrar (reposicionar) / esquina (escalar) ----
+    let dragMode = null; // 'pan' | 'scale'
+    let startX = 0, startY = 0, start = null;
+
+    function zoomFactor() {
+      const zEl = document.getElementById('zoomRange');
+      const v = zEl ? parseFloat(zEl.value) : 100;
+      return (v || 100) / 100;
+    }
+
+    imgEl.addEventListener('mousedown', (e) => {
+      if (!bg.classList.contains('editing')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragMode = 'pan';
+      startX = e.clientX; startY = e.clientY;
+      start = { l: state.l, t: state.t };
+    });
+
+    const handle = bg.querySelector('.img-edit-handle');
+    if (handle) {
+      handle.addEventListener('mousedown', (e) => {
+        if (!bg.classList.contains('editing')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragMode = 'scale';
+        startX = e.clientX; startY = e.clientY;
+        start = { w: state.w, h: state.h };
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragMode) return;
+      const z = zoomFactor();
+      const dx = (e.clientX - startX) / z;
+      const dy = (e.clientY - startY) / z;
+      if (dragMode === 'pan') {
+        state.l = start.l + dx;
+        state.t = start.t + dy;
+        applyPosition();
+      } else if (dragMode === 'scale') {
+        const aspect = state.naturalW / state.naturalH;
+        const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy * aspect;
+        const minSize = 40;
+        const newW = Math.max(minSize, start.w + delta);
+        state.w = newW;
+        state.h = newW / aspect;
+        applyPosition();
+      }
+    });
+    document.addEventListener('mouseup', () => {
+      dragMode = null;
+    });
+
+    bg._editor = {
+      setBrightness(v) { state.brightness = v; applyFilter(); },
+      setContrast(v) { state.contrast = v; applyFilter(); },
+      fitCover() { fitCover(50, 50); },
+      fitContain() { fitContain(); },
+      reset() {
+        state.brightness = 100; state.contrast = 100;
+        applyFilter();
+        fitCover(50, 50);
+      },
+      getState() { return state; },
+    };
+  }
+
+  img2pdfGenBtn.addEventListener('click', () => {
+    if (!img2pdfItems.length) return;
+    img2pdfItems.forEach((item) => {
+      const page = createPage(
+        '<div class="img-full-bg" contenteditable="false">' +
+          '<img class="img-crop-img" src="' + item.dataUrl + '" draggable="false" alt="">' +
+          '<div class="img-edit-handle" title="Arrastra para escalar la imagen"></div>' +
+        '</div>'
+      );
+      page.classList.add('page-image-full');
+      const bg = page.querySelector('.img-full-bg');
+      const imgEl = bg.querySelector('.img-crop-img');
+      setupImageEditor(bg, imgEl, {
+        fit: item.fit, posX: item.posX, posY: item.posY,
+        brightness: item.brightness, contrast: item.contrast,
+      });
+    });
+    const lastPage = pagesEl.lastElementChild;
+    focusPage(lastPage);
+    lastPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStatus(img2pdfItems.length + ' página(s) generadas — usa "Editar imagen" en la barra de herramientas para reajustarlas');
+    img2pdfItems = [];
+    renderImg2pdfList();
+    closeImg2pdfModal();
+  });
+
+  /* ---- Botón de toolbar "Editar imagen": reajusta la imagen de una hoja
+     ya generada (encuadre + brillo/contraste) sin borrar la hoja ---- */
+  const imgEditTrigger     = document.getElementById('imgEditTrigger');
+  const imgEditPopover     = document.getElementById('imgEditPopover');
+  const imgEditBrightness  = document.getElementById('imgEditBrightness');
+  const imgEditContrast    = document.getElementById('imgEditContrast');
+  const imgEditBrightVal   = document.getElementById('imgEditBrightVal');
+  const imgEditContrastVal = document.getElementById('imgEditContrastVal');
+  let editingImagePage = null;
+
+  function closeImageEditor() {
+    if (editingImagePage) {
+      const bg = editingImagePage.querySelector('.img-full-bg');
+      if (bg) bg.classList.remove('editing');
+    }
+    editingImagePage = null;
+    imgEditPopover.classList.remove('show');
+    imgEditTrigger.classList.remove('open');
+  }
+
+  function openImageEditor(page) {
+    closeAllPopovers();
+    editingImagePage = page;
+    const bg = page.querySelector('.img-full-bg');
+    bg.classList.add('editing');
+    const st = bg._imgState;
+    if (st) {
+      imgEditBrightness.value = st.brightness;
+      imgEditContrast.value = st.contrast;
+      imgEditBrightVal.textContent = st.brightness + '%';
+      imgEditContrastVal.textContent = st.contrast + '%';
+    }
+    imgEditPopover.classList.add('show');
+    imgEditTrigger.classList.add('open');
+  }
+
+  imgEditTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (editingImagePage) { closeImageEditor(); return; }
+    const page = currentPage && currentPage.classList.contains('page-image-full') ? currentPage : null;
+    if (!page) { setStatus('Selecciona primero una hoja de imagen (creada con "Convertir imágenes a PDF")'); return; }
+    openImageEditor(page);
+  });
+
+  imgEditBrightness.addEventListener('input', (e) => {
+    if (!editingImagePage) return;
+    const v = +e.target.value;
+    imgEditBrightVal.textContent = v + '%';
+    const bg = editingImagePage.querySelector('.img-full-bg');
+    if (bg._editor) bg._editor.setBrightness(v);
+  });
+  imgEditContrast.addEventListener('input', (e) => {
+    if (!editingImagePage) return;
+    const v = +e.target.value;
+    imgEditContrastVal.textContent = v + '%';
+    const bg = editingImagePage.querySelector('.img-full-bg');
+    if (bg._editor) bg._editor.setContrast(v);
+  });
+  document.getElementById('imgEditFitCover').addEventListener('click', () => {
+    if (!editingImagePage) return;
+    editingImagePage.querySelector('.img-full-bg')._editor.fitCover();
+    setStatus('Imagen ajustada a pantalla completa');
+  });
+  document.getElementById('imgEditFitContain').addEventListener('click', () => {
+    if (!editingImagePage) return;
+    editingImagePage.querySelector('.img-full-bg')._editor.fitContain();
+    setStatus('Imagen ajustada sin recortar');
+  });
+  document.getElementById('imgEditReset').addEventListener('click', () => {
+    if (!editingImagePage) return;
+    const bg = editingImagePage.querySelector('.img-full-bg');
+    bg._editor.reset();
+    imgEditBrightness.value = 100; imgEditContrast.value = 100;
+    imgEditBrightVal.textContent = '100%'; imgEditContrastVal.textContent = '100%';
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!editingImagePage) return;
+    if (imgEditPopover.contains(e.target) || e.target === imgEditTrigger || imgEditTrigger.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.img-full-bg.editing')) return;
+    closeImageEditor();
   });
 
   /* ----------------------------------------------------------------------
