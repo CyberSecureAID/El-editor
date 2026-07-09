@@ -60,6 +60,31 @@
      ---------------------------------------------------------------------- */
   const popoverRegistry = [];
 
+  // Si el popover, en su posición por defecto (pegado al borde izquierdo
+  // del botón que lo abre), se saldría del viewport por la derecha, lo
+  // volteamos para que se abra hacia la izquierda (alineado al borde
+  // derecho del botón) en su lugar. Así nunca queda cortado, sin importar
+  // qué tan cerca del borde de la pantalla esté el botón.
+  function positionPopover(popover) {
+    popover.style.left = '';
+    popover.style.right = '';
+    const margin = 10;
+    const rect = popover.getBoundingClientRect();
+    if (rect.right > window.innerWidth - margin) {
+      popover.style.left = 'auto';
+      popover.style.right = '0';
+    }
+    // Si al voltearlo hacia la izquierda igual se sale por ese lado
+    // (ventanas muy angostas), lo dejamos anclado al borde de la pantalla
+    // en vez de al del botón.
+    const rect2 = popover.getBoundingClientRect();
+    if (rect2.left < margin) {
+      const overflowLeft = margin - rect2.left;
+      const currentRight = parseFloat(getComputedStyle(popover).right) || 0;
+      popover.style.right = (currentRight - overflowLeft) + 'px';
+    }
+  }
+
   function closeAllPopovers(exceptPopover) {
     popoverRegistry.forEach(({ trigger, popover }) => {
       if (popover === exceptPopover) return;
@@ -76,6 +101,7 @@
       closeAllPopovers();
       popover.classList.toggle('show', willOpen);
       trigger.classList.toggle('open', willOpen);
+      if (willOpen) positionPopover(popover);
     });
   }
 
@@ -1347,6 +1373,7 @@
     }
     imgEditPopover.classList.add('show');
     imgEditTrigger.classList.add('open');
+    positionPopover(imgEditPopover);
   }
 
   imgEditTrigger.addEventListener('click', (e) => {
