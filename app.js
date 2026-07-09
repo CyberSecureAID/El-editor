@@ -1397,6 +1397,262 @@
   });
 
   /* ----------------------------------------------------------------------
+     IMPORTAR PDF / POWERPOINT / WORD
+     Carga librerías externas solo cuando hacen falta (no se agregan al
+     <head> del documento para no ralentizar la carga inicial):
+       - PDF.js (Mozilla)  → abrir un PDF existente y convertir cada
+         página en una hoja "page-image-full" editable con el mismo motor
+         de arrastrar/escalar de "Convertir imágenes a PDF" (además, al
+         ser hojas normales del editor, se les puede escribir encima,
+         tapar zonas, poner sellos, etc.).
+       - JSZip              → leer el .pptx (es un .zip) y extraer el
+         texto y las imágenes de cada diapositiva.
+       - Mammoth.js         → convertir un .docx a HTML manteniendo
+         párrafos, títulos e imágenes, listo para paginar en el editor.
+     En los tres casos el resultado son hojas normales del editor: se
+     pueden seguir editando con el toolbar de siempre y exportarse como
+     PDF con el botón "Exportar PDF" de arriba.
+     ---------------------------------------------------------------------- */
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-heri-lib="' + src + '"]');
+      if (existing) {
+        if (existing.dataset.loaded === '1') { resolve(); return; }
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', () => reject(new Error('No se pudo cargar ' + src)));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.dataset.heriLib = src;
+      s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+      s.onerror = () => reject(new Error('No se pudo cargar ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  let pdfjsLibPromise = null;
+  function loadPdfJs() {
+    if (!pdfjsLibPromise) {
+      pdfjsLibPromise = import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.min.mjs').then((mod) => {
+        mod.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
+        return mod;
+      });
+    }
+    return pdfjsLibPromise;
+  }
+  let jsZipPromise = null;
+  function loadJSZip() {
+    if (!jsZipPromise) {
+      jsZipPromise = loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js').then(() => window.JSZip);
+    }
+    return jsZipPromise;
+  }
+  let mammothLibPromise = null;
+  function loadMammothLib() {
+    if (!mammothLibPromise) {
+      mammothLibPromise = loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js').then(() => window.mammoth);
+    }
+    return mammothLibPromise;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Reparte nodos de un HTML largo en varias hojas nuevas, respetando la
+  // altura de página (para documentos de varias páginas, ej. un Word de
+  // 20 hojas con imágenes). No divide un párrafo o imagen a la mitad:
+  // si un bloque no cabe, pasa entero a la siguiente hoja.
+  function paginateHtmlIntoPages(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const nodes = Array.from(temp.childNodes).filter((n) => !(n.nodeType === 3 && !n.textContent.trim()));
+    let page = createPage(' ');
+    page.innerHTML = '';
+    let pagesCreated = 1;
+    nodes.forEach((node) => {
+      page.appendChild(node);
+      if (page.scrollHeight > page.clientHeight + 2) {
+        if (page.childNodes.length > 1) {
+          page.removeChild(node);
+          page = createPage(' ');
+          page.innerHTML = '';
+          page.appendChild(node);
+          pagesCreated += 1;
+        }
+        // si es el único nodo y ya desborda (ej. una imagen enorme), se
+        // deja tal cual: es preferible que sobresalga a perder contenido
+      }
+    });
+    if (!page.childNodes.length) page.innerHTML = '<p><br></p>';
+    return pagesCreated;
+  }
+
+  /* ---- Cargar PDF y editar ---- */
+  const pdfImportInput = document.getElementById('pdfImportInput');
+  document.getElementById('tplPdfImport').addEventListener('click', () => pdfImportInput.click());
+  pdfImportInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    toggleLoading(true, 'Cargando el lector de PDF…');
+    try {
+      const pdfjsLib = await loadPdfJs();
+      toggleLoading(true, 'Leyendo el PDF…');
+      const buffer = await file.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+      const firstVp = (await pdfDoc.getPage(1)).getViewport({ scale: 1 });
+      docOrientation = firstVp.width > firstVp.height ? 'landscape' : 'portrait';
+      pageOrientSel.value = docOrientation;
+
+      const firstNewPage = pagesEl.children.length;
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        toggleLoading(true, 'Renderizando página ' + i + ' de ' + pdfDoc.numPages + '…');
+        const pdfPage = await pdfDoc.getPage(i);
+        const viewport = pdfPage.getViewport({ scale: 2.2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const dataUrl = canvas.toDataURL('image/png');
+
+        const page = createPage(
+          '<div class="img-full-bg" contenteditable="false">' +
+            '<img class="img-crop-img" src="' + dataUrl + '" draggable="false" alt="">' +
+            '<div class="img-edit-handle" title="Arrastra para escalar la imagen"></div>' +
+          '</div>'
+        );
+        page.classList.add('page-image-full');
+        const bg = page.querySelector('.img-full-bg');
+        const imgEl = bg.querySelector('.img-crop-img');
+        setupImageEditor(bg, imgEl, { fit: 'contain', posX: 50, posY: 50, brightness: 100, contrast: 100 });
+      }
+      const targetPage = pagesEl.children[firstNewPage] || pagesEl.lastElementChild;
+      focusPage(targetPage);
+      targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('PDF cargado (' + pdfDoc.numPages + ' página[s]) — usa "Editar imagen" para reencuadrar, o escribe/agrega elementos encima');
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo abrir el PDF. Verifica tu conexión a internet, o que el archivo no esté dañado o protegido con contraseña.');
+    } finally {
+      toggleLoading(false);
+    }
+  });
+
+  /* ---- Cargar PowerPoint y exportar ---- */
+  const pptxImportInput = document.getElementById('pptxImportInput');
+  document.getElementById('tplPptxImport').addEventListener('click', () => pptxImportInput.click());
+  pptxImportInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    toggleLoading(true, 'Cargando el lector de PowerPoint…');
+    try {
+      const JSZip = await loadJSZip();
+      toggleLoading(true, 'Leyendo la presentación…');
+      const zip = await JSZip.loadAsync(file);
+      const slideFiles = Object.keys(zip.files)
+        .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+        .sort((a, b) => (+a.match(/slide(\d+)\.xml/)[1]) - (+b.match(/slide(\d+)\.xml/)[1]));
+      if (!slideFiles.length) throw new Error('El archivo no contiene diapositivas reconocibles');
+
+      const parser = new DOMParser();
+      const firstNewPage = pagesEl.children.length;
+      docOrientation = 'landscape'; // las diapositivas son horizontales por defecto
+      pageOrientSel.value = docOrientation;
+
+      for (let i = 0; i < slideFiles.length; i++) {
+        toggleLoading(true, 'Convirtiendo diapositiva ' + (i + 1) + ' de ' + slideFiles.length + '…');
+        const slidePath = slideFiles[i];
+        const xmlDoc = parser.parseFromString(await zip.file(slidePath).async('text'), 'application/xml');
+        const paragraphs = Array.from(xmlDoc.getElementsByTagName('a:p'))
+          .map((p) => Array.from(p.getElementsByTagName('a:t')).map((t) => t.textContent).join(''))
+          .filter((t) => t.trim().length);
+
+        // imágenes de la diapositiva (vía su archivo de relaciones)
+        const relsPath = slidePath.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
+        const imageDataUrls = [];
+        if (zip.file(relsPath)) {
+          const relsXml = parser.parseFromString(await zip.file(relsPath).async('text'), 'application/xml');
+          const imageRels = Array.from(relsXml.getElementsByTagName('Relationship'))
+            .filter((r) => /image/i.test(r.getAttribute('Type') || ''));
+          for (const rel of imageRels) {
+            const target = rel.getAttribute('Target') || '';
+            const mediaPath = 'ppt/' + target.replace(/^(\.\.\/)+/, '');
+            const mediaFile = zip.file(mediaPath);
+            if (!mediaFile) continue;
+            const base64 = await mediaFile.async('base64');
+            let ext = (mediaPath.split('.').pop() || 'png').toLowerCase();
+            if (ext === 'jpg') ext = 'jpeg';
+            if (ext === 'emf' || ext === 'wmf') continue; // formatos vectoriales de Office, no renderizables como <img>
+            imageDataUrls.push('data:image/' + ext + ';base64,' + base64);
+          }
+        }
+
+        let html = '';
+        if (paragraphs.length) {
+          html += '<p class="tpl-title" style="font-size:24px;">' + escapeHtml(paragraphs[0]) + '</p>';
+          paragraphs.slice(1).forEach((p) => { html += '<p>' + escapeHtml(p) + '</p>'; });
+        }
+        imageDataUrls.forEach((src) => {
+          html += '<div class="img-wrap" style="width:320px;height:220px;"><img src="' + src + '" draggable="false"></div>';
+        });
+        if (!html) html = '<p><br></p>';
+
+        createPage(html);
+      }
+      const targetPage = pagesEl.children[firstNewPage] || pagesEl.lastElementChild;
+      focusPage(targetPage);
+      targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('Presentación cargada (' + slideFiles.length + ' diapositiva[s]) — edítala y expórtala como PDF');
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo abrir el archivo .pptx. Verifica tu conexión a internet, o que el archivo no esté dañado.\n\nNota: el texto y las imágenes se recuperan e insertan como hojas editables; el diseño exacto original de las diapositivas no se reproduce pixel por pixel.');
+    } finally {
+      toggleLoading(false);
+    }
+  });
+
+  /* ---- Cargar Word y exportar ---- */
+  const docxImportInput = document.getElementById('docxImportInput');
+  document.getElementById('tplDocxImport').addEventListener('click', () => docxImportInput.click());
+  docxImportInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    toggleLoading(true, 'Cargando el lector de Word…');
+    try {
+      const mammothLib = await loadMammothLib();
+      toggleLoading(true, 'Convirtiendo el documento…');
+      const buffer = await file.arrayBuffer();
+      const result = await mammothLib.convertToHtml(
+        { arrayBuffer: buffer },
+        { convertImage: mammothLib.images.imgElement((image) =>
+            image.read('base64').then((data) => ({ src: 'data:' + image.contentType + ';base64,' + data }))
+          ) }
+      );
+      docOrientation = 'portrait';
+      pageOrientSel.value = docOrientation;
+      const firstNewPage = pagesEl.children.length;
+      toggleLoading(true, 'Paginando el contenido…');
+      const pagesCreated = paginateHtmlIntoPages(result.value);
+      const targetPage = pagesEl.children[firstNewPage] || pagesEl.lastElementChild;
+      focusPage(targetPage);
+      targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const warn = result.messages && result.messages.length ? ' (algunos estilos avanzados del Word no se conservan)' : '';
+      setStatus('Word cargado — ' + pagesCreated + ' página(s) generadas' + warn);
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo abrir el archivo .docx. Verifica tu conexión a internet, o que el archivo no esté dañado.');
+    } finally {
+      toggleLoading(false);
+    }
+  });
+
+  /* ----------------------------------------------------------------------
      ZOOM
      ---------------------------------------------------------------------- */
   const zoomRange = document.getElementById('zoomRange');
