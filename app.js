@@ -53,6 +53,41 @@
     setStatus._t = setTimeout(() => (statusText.textContent = 'Listo'), 2200);
   }
 
+  /* ----------------------------------------------------------------------
+     SISTEMA GENÉRICO DE POPOVERS (efectos, colores, herramientas)
+     Un botón "trigger" despliega un panel; un solo panel abierto a la vez;
+     clic afuera cierra todos.
+     ---------------------------------------------------------------------- */
+  const popoverRegistry = [];
+
+  function closeAllPopovers(exceptPopover) {
+    popoverRegistry.forEach(({ trigger, popover }) => {
+      if (popover === exceptPopover) return;
+      popover.classList.remove('show');
+      trigger.classList.remove('open');
+    });
+  }
+
+  function registerPopover(trigger, popover) {
+    popoverRegistry.push({ trigger, popover });
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = !popover.classList.contains('show');
+      closeAllPopovers();
+      popover.classList.toggle('show', willOpen);
+      trigger.classList.toggle('open', willOpen);
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    popoverRegistry.forEach(({ trigger, popover }) => {
+      if (!popover.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
+        popover.classList.remove('show');
+        trigger.classList.remove('open');
+      }
+    });
+  });
+
   const titleEditWrap = document.getElementById('titleEditWrap');
   const docTitleInput = document.getElementById('docTitle');
   if (titleEditWrap && docTitleInput) {
@@ -125,7 +160,7 @@
   function syncControlsFromPage(page) {
     const bg = getComputedStyle(page).backgroundColor;
     if (bg && bg.startsWith('rgb')) {
-      document.getElementById('pageBgColor').value = rgbToHex(bg);
+      document.getElementById('pageBgColorInput').value = rgbToHex(bg);
     }
     document.querySelectorAll('.tex-swatch').forEach((s) => s.classList.remove('selected'));
     const texClass = Array.from(page.classList).find((c) => c.startsWith('tex-'));
@@ -175,10 +210,27 @@
     setStatus(docOrientation === 'landscape' ? 'Orientación horizontal' : 'Orientación vertical');
   });
 
-  document.getElementById('pageBgColor').addEventListener('change', (e) => {
-    if (!currentPage) return;
-    currentPage.style.backgroundColor = e.target.value;
+  const pageBgTrigger = document.getElementById('pageBgTrigger');
+  const pageBgPopover = document.getElementById('pageBgPopover');
+  const pageBgColorInput = document.getElementById('pageBgColorInput');
+  registerPopover(pageBgTrigger, pageBgPopover);
+
+  document.getElementById('pageBgApply').addEventListener('click', () => {
+    if (!currentPage) { setStatus('Selecciona una hoja primero'); return; }
+    // El color sólido y las texturas son excluyentes: se limpia cualquier
+    // clase de textura para que el color inline no quede "atrapado" debajo
+    // de una textura elegida más tarde (ese cruce era el bug que hacía
+    // que algunas texturas oscuras no se vieran).
+    Array.from(currentPage.classList)
+      .filter((c) => c.startsWith('tex-'))
+      .forEach((c) => currentPage.classList.remove(c));
+    currentPage.classList.add('tex-none');
+    currentPage.style.backgroundColor = pageBgColorInput.value;
+    document.querySelectorAll('.tex-swatch').forEach((s) => s.classList.remove('selected'));
+    const noneSwatch = document.querySelector('.tex-swatch[data-tex="none"]');
+    if (noneSwatch) noneSwatch.classList.add('selected');
     setStatus('Fondo actualizado');
+    closeAllPopovers();
   });
 
   /* ----------------------------------------------------------------------
@@ -191,6 +243,12 @@
       .filter((c) => c.startsWith('tex-'))
       .forEach((c) => currentPage.classList.remove(c));
     currentPage.classList.add('tex-' + sw.dataset.tex);
+    // Bug corregido: un color de fondo aplicado antes dejaba un estilo
+    // inline (currentPage.style.backgroundColor) que tiene más prioridad
+    // que cualquier clase CSS, así que las texturas con color de fondo
+    // propio (estrellas, cuero, negro sólido, elegante oscuro...) se
+    // quedaban tapadas por ese color y parecía que "no pasaba nada".
+    currentPage.style.backgroundColor = '';
     document.querySelectorAll('.tex-swatch').forEach((s) => s.classList.remove('selected'));
     sw.classList.add('selected');
     setStatus('Textura aplicada');
@@ -252,6 +310,17 @@
       span.appendChild(frag);
       range.insertNode(span);
     }
+    // Si el texto seleccionado ya tenía spans anidados con la misma
+    // propiedad fijada (p. ej. un color de texto puesto antes), esos
+    // estilos internos ganan por estar más cerca del texto y el nuevo
+    // color no se veía aplicado "a todo". Se limpia esa propiedad en
+    // los descendientes para que el valor del span nuevo sí se note.
+    const styledDescendants = span.querySelectorAll('[style]');
+    Object.keys(styles).forEach((prop) => {
+      styledDescendants.forEach((el) => {
+        if (el.style[prop]) el.style[prop] = '';
+      });
+    });
     const newRange = document.createRange();
     newRange.selectNodeContents(span);
     sel.removeAllRanges();
@@ -306,14 +375,30 @@
     setStatus('Espaciado aplicado');
   });
 
-  document.getElementById('textColor').addEventListener('change', (e) => {
-    wrapSelectionWithStyle({ color: e.target.value });
+  const textColorTrigger = document.getElementById('textColorTrigger');
+  const textColorPopover = document.getElementById('textColorPopover');
+  const textColorInput = document.getElementById('textColorInput');
+  const textColorSwatch = document.getElementById('textColorSwatch');
+  registerPopover(textColorTrigger, textColorPopover);
+
+  document.getElementById('textColorApply').addEventListener('click', () => {
+    wrapSelectionWithStyle({ color: textColorInput.value });
+    textColorSwatch.style.background = textColorInput.value;
     setStatus('Color aplicado');
+    closeAllPopovers();
   });
 
-  document.getElementById('highlightColor').addEventListener('change', (e) => {
-    wrapSelectionWithStyle({ backgroundColor: e.target.value });
+  const highlightTrigger = document.getElementById('highlightTrigger');
+  const highlightPopover = document.getElementById('highlightPopover');
+  const highlightColorInput = document.getElementById('highlightColorInput');
+  const highlightColorSwatch = document.getElementById('highlightColorSwatch');
+  registerPopover(highlightTrigger, highlightPopover);
+
+  document.getElementById('highlightApply').addEventListener('click', () => {
+    wrapSelectionWithStyle({ backgroundColor: highlightColorInput.value });
+    highlightColorSwatch.style.background = highlightColorInput.value;
     setStatus('Resaltado aplicado');
+    closeAllPopovers();
   });
 
   document.getElementById('btnClearHighlight').addEventListener('click', () => {
@@ -400,27 +485,7 @@
   /* ---- Panel desplegable de efectos ---- */
   const fxTrigger = document.getElementById('fxTrigger');
   const fxPopover = document.getElementById('fxPopover');
-  function closeAllPopovers(except) {
-    document.querySelectorAll('.fx-popover.show, .tool-popover.show').forEach((p) => {
-      if (p !== except) p.classList.remove('show');
-    });
-    document.querySelectorAll('.fx-trigger.open').forEach((b) => {
-      if (b !== except) b.classList.remove('open');
-    });
-  }
-  fxTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = !fxPopover.classList.contains('show');
-    closeAllPopovers();
-    fxPopover.classList.toggle('show', willOpen);
-    fxTrigger.classList.toggle('open', willOpen);
-  });
-  document.addEventListener('click', (e) => {
-    if (!fxPopover.contains(e.target) && e.target !== fxTrigger) {
-      fxPopover.classList.remove('show');
-      fxTrigger.classList.remove('open');
-    }
-  });
+  registerPopover(fxTrigger, fxPopover);
 
   /* ----------------------------------------------------------------------
      INSERTAR IMÁGENES (redimensionables mediante resize nativo del div)
