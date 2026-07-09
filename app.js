@@ -1397,6 +1397,136 @@
   });
 
   /* ----------------------------------------------------------------------
+     BOTÓN "BORRAR" (junto a "Editar imagen"): abre una galería con una
+     miniatura de cada página del documento, numeradas en el mismo orden
+     en que aparecen (página 1, 2, 3…, aunque el documento tenga cientos
+     de hojas — la galería tiene scroll propio). Al tocar "Borrar" en una
+     tarjeta se pide confirmación indicando el número exacto de esa
+     página antes de eliminarla.
+     ---------------------------------------------------------------------- */
+  const pageManagerModal = document.getElementById('pageManagerModal');
+  const pageManagerGrid = document.getElementById('pageManagerGrid');
+  const pageManagerCount = document.getElementById('pageManagerCount');
+  const btnDeletePagesManager = document.getElementById('btnDeletePagesManager');
+  const pageDeleteConfirmModal = document.getElementById('pageDeleteConfirmModal');
+  const pageDeleteConfirmText = document.getElementById('pageDeleteConfirmText');
+  const pageDeleteConfirmAccept = document.getElementById('pageDeleteConfirmAccept');
+  const pageDeleteConfirmCancel = document.getElementById('pageDeleteConfirmCancel');
+
+  const PM_THUMB_WIDTH = 168; // ancho fijo (px) de cada miniatura en la galería
+
+  function buildPageManagerThumb(page) {
+    const w = page.offsetWidth || page.getBoundingClientRect().width || 1;
+    const h = page.offsetHeight || page.getBoundingClientRect().height || 1;
+    const scale = PM_THUMB_WIDTH / w;
+    const thumbH = Math.round(h * scale);
+
+    const frame = document.createElement('div');
+    frame.className = 'pm-thumb-frame';
+    frame.style.height = thumbH + 'px';
+
+    const inner = page.cloneNode(true);
+    inner.removeAttribute('contenteditable');
+    inner.removeAttribute('data-page-id');
+    inner.className = page.className; // conserva tamaño/textura/orientación
+    inner.classList.add('pm-thumb-inner');
+    inner.style.width = w + 'px';
+    inner.style.height = h + 'px';
+    inner.style.transform = 'scale(' + scale + ')';
+    inner.style.transformOrigin = 'top left';
+    inner.style.outline = 'none';
+    inner.style.pointerEvents = 'none';
+
+    frame.appendChild(inner);
+    return frame;
+  }
+
+  function renderPageManagerGrid() {
+    const pages = Array.from(pagesEl.children);
+    pageManagerGrid.innerHTML = '';
+    pageManagerCount.textContent = pages.length + (pages.length === 1 ? ' página' : ' páginas');
+
+    pages.forEach((page, idx) => {
+      const num = idx + 1;
+      const card = document.createElement('div');
+      card.className = 'pm-card';
+
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'pm-thumb-wrap';
+      thumbWrap.appendChild(buildPageManagerThumb(page));
+
+      const label = document.createElement('div');
+      label.className = 'pm-label';
+      label.textContent = 'Página ' + num;
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'pm-delete-btn';
+      delBtn.textContent = '🗑 Borrar';
+      delBtn.addEventListener('click', () => requestPageDeletion(num));
+
+      card.appendChild(thumbWrap);
+      card.appendChild(label);
+      card.appendChild(delBtn);
+      pageManagerGrid.appendChild(card);
+    });
+  }
+
+  function openPageManagerModal() {
+    closeAllPopovers();
+    if (!pagesEl.children.length) { setStatus('No hay páginas en el documento'); return; }
+    renderPageManagerGrid();
+    pageManagerModal.classList.add('show');
+  }
+  function closePageManagerModal() {
+    pageManagerModal.classList.remove('show');
+    pageManagerGrid.innerHTML = ''; // libera las miniaturas clonadas
+  }
+
+  btnDeletePagesManager.addEventListener('click', openPageManagerModal);
+  document.getElementById('pageManagerClose').addEventListener('click', closePageManagerModal);
+  pageManagerModal.addEventListener('click', (e) => { if (e.target === pageManagerModal) closePageManagerModal(); });
+
+  let pendingDeletePageNumber = null;
+
+  function requestPageDeletion(num) {
+    if (pagesEl.children.length <= 1) {
+      setStatus('Debe quedar al menos una página en el documento');
+      return;
+    }
+    pendingDeletePageNumber = num;
+    pageDeleteConfirmText.textContent = '¿Estás seguro que deseas borrar la página número ' + num + '? Esta acción no se puede deshacer.';
+    pageDeleteConfirmModal.classList.add('show');
+  }
+  function closeDeleteConfirmModal() {
+    pageDeleteConfirmModal.classList.remove('show');
+    pendingDeletePageNumber = null;
+  }
+  pageDeleteConfirmCancel.addEventListener('click', closeDeleteConfirmModal);
+  document.getElementById('pageDeleteConfirmClose').addEventListener('click', closeDeleteConfirmModal);
+  pageDeleteConfirmModal.addEventListener('click', (e) => { if (e.target === pageDeleteConfirmModal) closeDeleteConfirmModal(); });
+
+  pageDeleteConfirmAccept.addEventListener('click', () => {
+    if (!pendingDeletePageNumber) return;
+    const pages = Array.from(pagesEl.children);
+    const target = pages[pendingDeletePageNumber - 1];
+    const deletedNum = pendingDeletePageNumber;
+    if (target) {
+      const wasCurrent = target === currentPage;
+      target.remove();
+      refreshPageLabels();
+      if (wasCurrent || !pagesEl.contains(currentPage)) {
+        const fallback = pagesEl.lastElementChild;
+        if (fallback) focusPage(fallback);
+      }
+      setStatus('Página ' + deletedNum + ' eliminada');
+    }
+    closeDeleteConfirmModal();
+    if (pagesEl.children.length) renderPageManagerGrid();
+    else closePageManagerModal();
+  });
+
+  /* ----------------------------------------------------------------------
      IMPORTAR PDF / POWERPOINT / WORD
      Carga librerías externas solo cuando hacen falta (no se agregan al
      <head> del documento para no ralentizar la carga inicial):
@@ -1490,7 +1620,7 @@
     return pagesCreated;
   }
 
-  /* ---- Cargar PDF y editar ---- */
+  /* ---- Visor de PDF (carga páginas como imágenes editables/anotables) ---- */
   const pdfImportInput = document.getElementById('pdfImportInput');
   document.getElementById('tplPdfImport').addEventListener('click', () => pdfImportInput.click());
   pdfImportInput.addEventListener('change', async (e) => {
@@ -1666,6 +1796,27 @@
 
   /* ----------------------------------------------------------------------
      EXPORTACIÓN A PDF (alta calidad: html2canvas + jsPDF)
+
+     NOTA IMPORTANTE — por qué existe el bloque "APLANADO DE EFECTOS":
+     Los efectos de texto tipo gradiente (Tornasol, Dorado, Plata, Fuego,
+     Cromo, etc.) se pintan en pantalla con `background-clip:text` +
+     `color:transparent` — el navegador "recorta" el gradiente con la forma
+     de las letras. html2canvas NO soporta `background-clip:text`: pinta el
+     gradiente como un rectángulo sólido sobre toda la caja del texto (y
+     como el color es transparente, las letras reales no se ven), lo que
+     produce exactamente esas "barras" de color sin texto que se ven en el
+     PDF exportado. Lo mismo pasa con el efecto "Contorno", que usa
+     `color:transparent` + `-webkit-text-stroke`.
+
+     La solución: justo antes de capturar cada página con html2canvas,
+     trabajamos sobre una COPIA de la página (fuera de pantalla, la hoja
+     real que el usuario edita nunca se toca) y "revelamos" cada uno de
+     esos textos dibujándolo nosotros mismos en un <canvas> 2D (que sí
+     soporta gradientes en texto y trazos), línea por línea tal como
+     quedó compuesto en pantalla, y lo insertamos como una imagen en el
+     mismo lugar exacto. Así html2canvas ya no ve un texto con
+     background-clip, ve una imagen normal — y el efecto se conserva en
+     el PDF final tal como se ve en el editor.
      ---------------------------------------------------------------------- */
   const loadingOverlay = document.getElementById('loadingOverlay');
   const loadingText = document.getElementById('loadingText');
@@ -1673,6 +1824,206 @@
   function toggleLoading(show, text) {
     loadingOverlay.classList.toggle('show', show);
     if (text) loadingText.textContent = text;
+  }
+
+  /* ---- APLANADO DE EFECTOS DE TEXTO PARA EXPORTACIÓN ---- */
+  const FX_RASTER_SCALE = 4; // resolución interna del canvas por línea (nitidez)
+
+  function collectTextNodes(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    return nodes;
+  }
+
+  function mapGlobalIndex(nodes, globalIndex) {
+    let remaining = globalIndex;
+    for (const node of nodes) {
+      const len = node.textContent.length;
+      if (remaining <= len) return { node, offset: remaining };
+      remaining -= len;
+    }
+    const last = nodes[nodes.length - 1];
+    return { node: last, offset: last ? last.textContent.length : 0 };
+  }
+
+  // Divide el contenido de un elemento en sus líneas visuales reales
+  // (tal como el navegador las compuso), cada una con su propio rect.
+  function splitElementIntoVisualLines(el) {
+    const nodes = collectTextNodes(el);
+    if (!nodes.length) return [];
+    const fullText = nodes.map((n) => n.textContent).join('');
+    if (!fullText.trim()) return [];
+    const range = document.createRange();
+    const lines = [];
+    let lineStart = 0;
+    let lastTop = null;
+    const total = fullText.length;
+    for (let i = 1; i <= total; i++) {
+      const startPos = mapGlobalIndex(nodes, lineStart);
+      const endPos = mapGlobalIndex(nodes, i);
+      range.setStart(startPos.node, startPos.offset);
+      range.setEnd(endPos.node, endPos.offset);
+      const rects = range.getClientRects();
+      const r = rects[rects.length - 1];
+      if (!r) continue;
+      if (lastTop === null) lastTop = r.top;
+      if (Math.abs(r.top - lastTop) > 1 && i > lineStart + 1) {
+        const cutStart = mapGlobalIndex(nodes, lineStart);
+        const cutEnd = mapGlobalIndex(nodes, i - 1);
+        range.setStart(cutStart.node, cutStart.offset);
+        range.setEnd(cutEnd.node, cutEnd.offset);
+        const lineRects = range.getClientRects();
+        const lineRect = lineRects[0];
+        if (lineRect) lines.push({ text: fullText.slice(lineStart, i - 1), rect: lineRect });
+        lineStart = i - 1;
+        lastTop = null;
+      }
+    }
+    const lastStart = mapGlobalIndex(nodes, lineStart);
+    const lastEnd = mapGlobalIndex(nodes, total);
+    range.setStart(lastStart.node, lastStart.offset);
+    range.setEnd(lastEnd.node, lastEnd.offset);
+    const lastRects = range.getClientRects();
+    if (lastRects.length) lines.push({ text: fullText.slice(lineStart), rect: lastRects[0] });
+    return lines;
+  }
+
+  // Interpreta el valor ya resuelto de `background-image` (linear-gradient
+  // o repeating-linear-gradient con colores en rgb()/rgba()/hex) devuelto
+  // por getComputedStyle, para poder reconstruirlo con la Canvas API.
+  function parseResolvedLinearGradient(bgImage) {
+    const m = bgImage.match(/(repeating-)?linear-gradient\(([^)]+)\)/);
+    if (!m) return null;
+    const inner = m[2];
+    const parts = [];
+    let depth = 0, cur = '';
+    for (const ch of inner) {
+      if (ch === '(') depth++;
+      if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    if (cur.trim()) parts.push(cur.trim());
+    if (!parts.length) return null;
+
+    let angleDeg = 180;
+    let stopParts = parts;
+    const angleMatch = parts[0].match(/^(-?\d+(?:\.\d+)?)deg$/);
+    if (angleMatch) { angleDeg = parseFloat(angleMatch[1]); stopParts = parts.slice(1); }
+
+    const stops = [];
+    stopParts.forEach((p) => {
+      const cm = p.match(/^(rgba?\([^)]+\)|#[0-9a-fA-F]{3,8})\s*(-?\d+(?:\.\d+)?%)?$/);
+      if (!cm) return;
+      stops.push({ color: cm[1], pos: cm[2] ? parseFloat(cm[2]) / 100 : null });
+    });
+    if (!stops.length) return null;
+    stops.forEach((s, i) => {
+      if (s.pos === null) {
+        if (i === 0) s.pos = 0;
+        else if (i === stops.length - 1) s.pos = 1;
+        else s.pos = i / (stops.length - 1);
+      }
+    });
+    return { angleDeg, stops };
+  }
+
+  // Vector de la línea de gradiente para un ángulo CSS (0deg = hacia
+  // arriba, sentido horario) dentro de una caja w×h — misma fórmula que
+  // usan los navegadores para `linear-gradient(<angle>, ...)`.
+  function gradientLineVector(angleDeg, w, h) {
+    const rad = (angleDeg * Math.PI) / 180;
+    const dx = Math.sin(rad), dy = -Math.cos(rad);
+    const len = Math.abs((w / 2) * dx) + Math.abs((h / 2) * dy);
+    const cx = w / 2, cy = h / 2;
+    return [cx - dx * len, cy - dy * len, cx + dx * len, cy + dy * len];
+  }
+
+  function rasterizeFxLine(text, cs, width, height, isGradient, isStroke, strokeWidthPx) {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(width * FX_RASTER_SCALE));
+    canvas.height = Math.max(1, Math.ceil(height * FX_RASTER_SCALE));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(FX_RASTER_SCALE, FX_RASTER_SCALE);
+    ctx.font = [cs.fontStyle, cs.fontWeight, cs.fontSize, cs.fontFamily].join(' ');
+    ctx.textBaseline = 'alphabetic';
+    try {
+      if (cs.letterSpacing && cs.letterSpacing !== 'normal') ctx.letterSpacing = cs.letterSpacing;
+    } catch (e) { /* letterSpacing en canvas no soportado en algunos navegadores: se ignora */ }
+
+    const fontSizePx = parseFloat(cs.fontSize) || 16;
+    const baselineY = height - (height - fontSizePx) / 2 - fontSizePx * 0.22;
+
+    if (isGradient) {
+      const parsed = parseResolvedLinearGradient(cs.backgroundImage);
+      if (parsed) {
+        const [x0, y0, x1, y1] = gradientLineVector(parsed.angleDeg, width, height);
+        const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+        parsed.stops.forEach((s) => grad.addColorStop(Math.min(1, Math.max(0, s.pos)), s.color));
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = '#c08a45';
+      }
+      ctx.fillText(text, 0, baselineY);
+    }
+    if (isStroke) {
+      ctx.lineWidth = strokeWidthPx || 1.4;
+      ctx.strokeStyle = cs.getPropertyValue('-webkit-text-stroke-color') || cs.getPropertyValue('text-stroke-color') || '#c08a45';
+      ctx.strokeText(text, 0, baselineY);
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  function replaceElementWithRasterLines(el, cs, isGradient, isStroke, strokeWidthPx) {
+    const lines = splitElementIntoVisualLines(el);
+    if (!lines.length) return;
+    const wrapper = document.createElement('span');
+    wrapper.setAttribute('data-fx-flattened', '1');
+    wrapper.style.display = 'inline';
+    let appended = 0;
+    lines.forEach((line) => {
+      const w = line.rect.width, h = line.rect.height;
+      if (w <= 0 || h <= 0 || !line.text) return;
+      const dataUrl = rasterizeFxLine(line.text, cs, w, h, isGradient, isStroke, strokeWidthPx);
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.width = w + 'px';
+      img.style.height = h + 'px';
+      img.style.display = 'inline-block';
+      img.style.verticalAlign = 'middle';
+      wrapper.appendChild(img);
+      appended++;
+    });
+    if (appended) el.replaceWith(wrapper);
+  }
+
+  // Recorre una copia de la página buscando cualquier elemento pintado con
+  // `background-clip:text` (todos los efectos con gradiente: Tornasol,
+  // Dorado, Plata, Fuego, Cromo, Arcoíris, etc.) o con `-webkit-text-stroke`
+  // + color transparente (efecto Contorno), y lo reemplaza por su versión
+  // rasterizada antes de que html2canvas capture la página.
+  async function flattenSpecialTextForExport(root) {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const candidates = Array.from(root.querySelectorAll('*'));
+    for (const el of candidates) {
+      if (!root.contains(el)) continue; // ya reemplazado como parte de un elemento padre
+      const cs = getComputedStyle(el);
+      const clip = cs.getPropertyValue('-webkit-background-clip') || cs.getPropertyValue('background-clip');
+      const bgImage = cs.getPropertyValue('background-image');
+      const isGradient = clip.trim() === 'text' && bgImage && bgImage !== 'none';
+      const strokeWidthPx = parseFloat(
+        cs.getPropertyValue('-webkit-text-stroke-width') || cs.getPropertyValue('text-stroke-width') || '0'
+      ) || 0;
+      const isStroke = strokeWidthPx > 0 && cs.getPropertyValue('color').replace(/\s+/g, '') === 'rgba(0,0,0,0)';
+      if (!isGradient && !isStroke) continue;
+      try {
+        replaceElementWithRasterLines(el, cs, isGradient, isStroke, strokeWidthPx);
+      } catch (err) {
+        console.warn('No se pudo aplanar un efecto de texto para la exportación:', err);
+      }
+    }
   }
 
   async function exportPDF() {
@@ -1685,8 +2036,6 @@
     }
 
     toggleLoading(true, 'Preparando documento…');
-    const prevOutline = currentPage ? currentPage.style.outline : '';
-    pages.forEach((p) => (p.style.outline = 'none'));
 
     try {
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
@@ -1703,18 +2052,32 @@
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         loadingText.textContent = 'Renderizando página ' + (i + 1) + ' de ' + pages.length + '…';
-        page.classList.add('exporting');
 
-        const canvas = await window.html2canvas(page, {
+        // Trabajamos sobre una copia fuera de pantalla: la hoja real que
+        // el usuario está editando nunca se modifica ni parpadea.
+        const clone = page.cloneNode(true);
+        clone.removeAttribute('contenteditable');
+        clone.classList.add('exporting');
+        clone.style.position = 'fixed';
+        clone.style.left = '-99999px';
+        clone.style.top = '0';
+        clone.style.margin = '0';
+        clone.style.outline = 'none';
+        document.body.appendChild(clone);
+
+        await flattenSpecialTextForExport(clone);
+
+        const canvas = await window.html2canvas(clone, {
           scale: 3,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
+          windowWidth: clone.scrollWidth,
+          windowHeight: clone.scrollHeight,
         });
 
-        page.classList.remove('exporting');
+        document.body.removeChild(clone);
+
         const imgData = canvas.toDataURL('image/png', 1.0);
         if (i > 0) doc.addPage(format, orientation);
         doc.addImage(imgData, 'PNG', 0, 0, dims.w, dims.h, undefined, 'FAST');
@@ -1729,8 +2092,7 @@
       console.error(err);
       alert('Ocurrió un error al generar el PDF. Revisa la consola del navegador para más detalles.');
     } finally {
-      pages.forEach((p) => p.classList.remove('exporting'));
-      if (currentPage) currentPage.style.outline = prevOutline;
+      document.querySelectorAll('body > .page.exporting').forEach((p) => p.remove());
       toggleLoading(false);
     }
   }

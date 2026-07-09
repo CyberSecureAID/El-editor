@@ -165,6 +165,7 @@
         <input type="range" id="imgEditContrast" min="60" max="200" value="100">
         <button type="button" class="apply-btn" id="imgEditReset">↺ Restablecer imagen</button>
       </div>
+      <button class="fx-trigger" id="btnDeletePagesManager" title="Ver todas las páginas del documento y eliminarlas por número" style="margin-left:6px;">🗑️ Borrar</button>
     </div>
 
   </div>
@@ -183,12 +184,6 @@
 
       <div class="sidebar-panel active" id="panel-templates">
         <p class="panel-title">Insertar como hoja nueva</p>
-        <button class="tpl-card tpl-card-highlight" id="tplPdfImport"><div class="t-name">📕 Cargar PDF y editar</div><div class="t-desc">Abre un PDF existente como hojas editables</div></button>
-        <button class="tpl-card tpl-card-highlight" id="tplPptxImport"><div class="t-name">📊 Cargar PowerPoint y exportar</div><div class="t-desc">Convierte una presentación .pptx en páginas de PDF</div></button>
-        <button class="tpl-card tpl-card-highlight" id="tplDocxImport"><div class="t-name">📝 Cargar Word y exportar</div><div class="t-desc">Convierte un documento .docx en páginas de PDF</div></button>
-        <input type="file" id="pdfImportInput" accept="application/pdf" hidden>
-        <input type="file" id="pptxImportInput" accept=".pptx" hidden>
-        <input type="file" id="docxImportInput" accept=".docx" hidden>
         <button class="tpl-card tpl-card-highlight" id="tplImg2Pdf"><div class="t-name">🖼 Convertir imágenes a PDF</div><div class="t-desc">Carga fotos de un documento y expórtalas como PDF</div></button>
         <button class="tpl-card" data-tpl="blank"><div class="t-name">Página en blanco</div><div class="t-desc">Lienzo vacío, listo para escribir</div></button>
         <button class="tpl-card" data-tpl="carta"><div class="t-name">Carta comercial</div><div class="t-desc">Membrete, cuerpo y firma</div></button>
@@ -202,6 +197,13 @@
         <button class="tpl-card" data-tpl="propuesta"><div class="t-name">Propuesta comercial</div><div class="t-desc">Alcance, entregables y tabla de inversión</div></button>
         <button class="tpl-card" data-tpl="menu"><div class="t-name">Menú de restaurante</div><div class="t-desc">Categorías, platillos y precios</div></button>
         <button class="tpl-card" data-tpl="agenda"><div class="t-name">Agenda de reunión</div><div class="t-desc">Objetivos, temas y responsables</div></button>
+        <p class="panel-title">Importar otros formatos</p>
+        <button class="tpl-card tpl-card-highlight" id="tplPptxImport"><div class="t-name">📊 Cargar PowerPoint y exportar</div><div class="t-desc">Convierte una presentación .pptx en páginas editables de PDF</div></button>
+        <button class="tpl-card tpl-card-highlight" id="tplDocxImport"><div class="t-name">📝 Cargar Word y exportar</div><div class="t-desc">Convierte un documento .docx en páginas editables de PDF</div></button>
+        <button class="tpl-card tpl-card-highlight" id="tplPdfImport"><div class="t-name">📕 Visor de PDF</div><div class="t-desc">Carga un PDF existente para verlo, recortarlo o anotarlo encima (no extrae texto editable)</div></button>
+        <input type="file" id="pdfImportInput" accept="application/pdf" hidden>
+        <input type="file" id="pptxImportInput" accept=".pptx" hidden>
+        <input type="file" id="docxImportInput" accept=".docx" hidden>
       </div>
 
       <div class="sidebar-panel" id="panel-textures">
@@ -334,6 +336,32 @@
     <div class="img2pdf-actions">
       <span class="img2pdf-count" id="img2pdfCount">0 imágenes</span>
       <button class="tool-popover-apply-btn img2pdf-generate-btn" id="img2pdfGenerate">Generar páginas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: gestor de páginas (borrar por número) -->
+<div class="modal-overlay" id="pageManagerModal">
+  <div class="modal-box modal-box-wide">
+    <button class="modal-close" id="pageManagerClose" aria-label="Cerrar">✕</button>
+    <p class="modal-title">Páginas del documento</p>
+    <p class="modal-text">Cada tarjeta corresponde exactamente al número de página indicado. Toca "Borrar" en la página que quieras eliminar.</p>
+    <div class="pm-grid" id="pageManagerGrid"><!-- generado por app.js --></div>
+    <div class="img2pdf-actions">
+      <span class="img2pdf-count" id="pageManagerCount">0 páginas</span>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar eliminación de una página específica -->
+<div class="modal-overlay" id="pageDeleteConfirmModal">
+  <div class="modal-box">
+    <button class="modal-close" id="pageDeleteConfirmClose" aria-label="Cerrar">✕</button>
+    <p class="modal-title">Eliminar página</p>
+    <p class="modal-text" id="pageDeleteConfirmText">¿Estás seguro que deseas borrar esta página?</p>
+    <div class="pm-confirm-actions">
+      <button type="button" class="pm-confirm-cancel" id="pageDeleteConfirmCancel">Cancelar</button>
+      <button type="button" class="pm-confirm-accept" id="pageDeleteConfirmAccept">Sí, eliminar</button>
     </div>
   </div>
 </div>
